@@ -41,7 +41,7 @@ jobs:
         uses: messense/maturin-action@main
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --no-sdist --cargo-extra-args="--features python --features openblas-static"
+          args: --release --out dist --no-sdist --cargo-extra-args="--features python --features openblas-system"
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
