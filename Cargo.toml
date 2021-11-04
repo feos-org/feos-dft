@@ -1,0 +1,43 @@
+[package]
+name = "feos-dft"
+version = "0.1.0"
+authors = ["Philipp Rehner <rehner@itt.uni-stuttgart.de>"]
+edition = "2018"
+
+[lib]
+name = "feos_dft"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+quantity = "0.3"
+feos-core = { git = "https://github.com/feos-org/feos-core", branch = "main" }
+num-dual = "0.3"
+ndarray = { version = "0.15", features = ["serde", "rayon"] }
+ndarray-linalg = "0.14"
+ndarray-stats = "0.5"
+rustdct = "0.6"
+rustfft = "6.0"
+log = "0.4"
+special-fun = "0.2"
+ang = "0.5"
+num-traits = { version = "0.2", default-features = false }
+numpy = { version = "0.14", optional = true }
+libc = "0.2"
+gauss-quad = "0.1"
+rayon = "1.5"
+petgraph = "0.6"
+
+[dependencies.pyo3]
+version = "0.14"
+features = ["extension-module", "abi3", "abi3-py36"]
+optional = true
+
+[features]
+default = []
+python = ["pyo3", "numpy", "feos-core/python"]
+openblas-system = ["feos-core/openblas-system"]
+openblas-static = ["feos-core/openblas-static"]
+intel-mkl-system = ["feos-core/intel-mkl-system"]
+intel-mkl-static = ["feos-core/intel-mkl-static"]
+netlib-system = ["feos-core/netlib-system"]
+netlib-static = ["feos-core/netlib-static"]

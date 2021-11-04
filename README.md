@@ -1,1 +1,1 @@
-# feos-dft
+# FeOs-DFT
