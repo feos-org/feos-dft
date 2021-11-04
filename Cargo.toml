@@ -24,7 +24,6 @@ num-traits = { version = "0.2", default-features = false }
 numpy = { version = "0.14", optional = true }
 libc = "0.2"
 gauss-quad = "0.1"
-rayon = "1.5"
 petgraph = "0.6"
 
 [dependencies.pyo3]
