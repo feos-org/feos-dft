@@ -1,0 +1,26 @@
+name: Build Wheels
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          maturin-version: latest
+          manylinux: auto
+          command: build
+          args: --release --out dist --no-sdist --cargo-extra-args="--features python --features openblas-static"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
