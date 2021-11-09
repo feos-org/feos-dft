@@ -7,6 +7,7 @@ use crate::solver::DFTSolver;
 use feos_core::{Contributions, EosResult, EosUnit, State};
 use ndarray::prelude::*;
 use ndarray::Axis as Axis_nd;
+use ndarray::Zip;
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray2, QuantityScalar};
 use std::rc::Rc;
@@ -347,27 +348,29 @@ pub fn external_potential_3d<U: EosUnit, F: FluidParameters>(
     let cutoff_radius2 = cutoff_radius.powi(2);
 
     // calculate external potential
-    for (ix, &x) in axis[0].grid.iter().enumerate() {
-        for (iy, &y) in axis[1].grid.iter().enumerate() {
-            for (iz, &z) in axis[2].grid.iter().enumerate() {
-                let distance2 = calculate_distance2([&x, &y, &z], &coordinates, system_size)?;
-                for (i, &mi) in m.iter().enumerate() {
-                    let sigma_sf = sigma_ss.mapv(|s| (s + functional.sigma_ff()[i]) / 2.0);
-                    let epsilon_sf = epsilon_ss.mapv(|e| (e * functional.epsilon_k_ff()[i]).sqrt());
-                    external_potential[[i, ix, iy, iz]] = (0..sigma_ss.len())
-                        .map(|alpha| {
-                            mi * evaluate(
-                                distance2[alpha],
-                                sigma_sf[alpha],
-                                epsilon_sf[alpha],
-                                cutoff_radius2,
-                            )
-                        })
-                        .sum();
-                }
-            }
-        }
-    }
+    let sigma_ff = functional.sigma_ff();
+    let epsilon_k_ff = functional.epsilon_k_ff();
+
+    Zip::indexed(&mut external_potential).par_for_each(|(i, ix, iy, iz), u| {
+        let distance2 = calculate_distance2(
+            [&axis[0].grid[ix], &axis[1].grid[iy], &axis[2].grid[iz]],
+            &coordinates,
+            system_size,
+        );
+        let sigma_sf = sigma_ss.mapv(|s| (s + sigma_ff[i]) / 2.0);
+        let epsilon_sf = epsilon_ss.mapv(|e| (e * epsilon_k_ff[i]).sqrt());
+        *u = (0..sigma_ss.len())
+            .map(|alpha| {
+                m[i] * evaluate(
+                    distance2[alpha],
+                    sigma_sf[alpha],
+                    epsilon_sf[alpha],
+                    cutoff_radius2,
+                )
+            })
+            .sum::<f64>()
+            / reduced_temperature
+    });
 
     let potential_cutoff = potential_cutoff.unwrap_or(MAX_POTENTIAL);
     external_potential.map_inplace(|x| {
@@ -376,7 +379,7 @@ pub fn external_potential_3d<U: EosUnit, F: FluidParameters>(
         }
     });
 
-    Ok(external_potential / reduced_temperature)
+    Ok(external_potential)
 }
 
 /// Evaluate LJ12-6 potential between solid site "alpha" and fluid segment
@@ -399,7 +402,7 @@ fn calculate_distance2(
     point: [&f64; 3],
     coordinates: &Array2<f64>,
     system_size: [f64; 3],
-) -> EosResult<Array1<f64>> {
+) -> Array1<f64> {
     let distance2 = Array1::from_shape_fn(coordinates.ncols(), |i| {
         let mut rx = coordinates[[0, i]] - point[0];
         let mut ry = coordinates[[1, i]] - point[1];
@@ -412,5 +415,5 @@ fn calculate_distance2(
         rx.powi(2) + ry.powi(2) + rz.powi(2)
     });
 
-    Ok(distance2)
+    distance2
 }
