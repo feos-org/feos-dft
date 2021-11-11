@@ -220,43 +220,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     }
                     _ => unreachable!(),
                 }
-
-                // let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
-                // let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
-                // let n2v = weighted_densities
-                //     .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
-                // (
-                //     &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-                //     &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
-                // )
             }
-            // FMTVersion::PureWhiteBear => {
-            //     let r = self.properties.hs_diameter(temperature)[0] * 0.5;
-            //     let n2v = weighted_densities.slice_axis(Axis(0), Slice::new(2, None, 1));
-            //     let n1v = n2v.mapv(|n2v| n2v / (r * 4.0 * PI));
-            //     (
-            //         &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-            //         &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
-            //     )
-            // }
-            // FMTVersion::AntiSymWhiteBear => {
-            //     let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
-            //     let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
-            //     let n2v = weighted_densities
-            //         .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
-
-            //     let mut xi2 = (&n2v * &n2v).sum_axis(Axis(0)) / n2.map(|n| n.powi(2));
-
-            //     xi2.iter_mut().for_each(|x| {
-            //         if x.re() > 1.0 {
-            //             *x = N::one()
-            //         }
-            //     });
-            //     (
-            //         &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-            //         &n2 * &n2 * xi2.mapv(|x| (-x + 1.0).powi(3)),
-            //     )
-            // }
             FMTVersion::KierlikRosinberg => (&n1 * &n2, &n2 * &n2),
         };
 
