@@ -204,13 +204,11 @@ fn evaluate(distance2: f64, sigma: f64, epsilon: f64, cutoff_radius2: f64) -> f6
 
 /// Evaluate the squared euclidian distance between a point and the coordinates of all solid atoms.
 fn calculate_distance2(point: [&f64; 3], coordinates: &Array2<f64>) -> Array1<f64> {
-    let distance2 = Array1::from_shape_fn(coordinates.ncols(), |i| {
+    Array1::from_shape_fn(coordinates.ncols(), |i| {
         let rx = coordinates[[0, i]] - point[0];
         let ry = coordinates[[1, i]] - point[1];
         let rz = coordinates[[2, i]] - point[2];
 
         rx.powi(2) + ry.powi(2) + rz.powi(2)
-    });
-
-    distance2
+    })
 }
