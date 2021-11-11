@@ -15,7 +15,7 @@ use std::rc::Rc;
 
 #[pyclass(name = "FMTVersion")]
 #[derive(Clone, Copy)]
-pub struct PyFMTVersion(FMTVersion);
+pub struct PyFMTVersion(pub FMTVersion);
 
 #[pymethods]
 #[allow(non_snake_case)]
@@ -30,6 +30,12 @@ impl PyFMTVersion {
     #[classattr]
     pub fn KierlikRosinberg() -> Self {
         Self(FMTVersion::KierlikRosinberg)
+    }
+
+    /// Anti-symmetric White Bear fundamental measure theory ([Rosenfeld et al., 1997](https://doi.org/10.1103/PhysRevE.55.4245)) and SI of ([Kessler et al., 2021](https://doi.org/10.1016/j.micromeso.2021.111263))
+    #[classattr]
+    pub fn AntiSymWhiteBear() -> Self {
+        Self(FMTVersion::AntiSymWhiteBear)
     }
 }
 

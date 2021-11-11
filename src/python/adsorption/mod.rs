@@ -206,7 +206,7 @@ macro_rules! impl_adsorption_isotherm {
             /// $adsorption
             ///
             #[staticmethod]
-            #[pyo3(text_signature = "(functional, temperature, p_min, p_max, pore, molefracs=None, solver=None, max_iter=None, tol=None, verbosity=None)")]
+            #[pyo3(text_signature = "(functional, temperature, p_min, p_max, pore, molefracs=None, solver=NOne, max_iter=None, tol=None, verbosity=None)")]
             pub fn phase_equilibrium(
                 functional: &$py_func,
                 temperature: PySINumber,

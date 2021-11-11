@@ -111,7 +111,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> SolvationProfil
             epsilon_ss,
             cutoff_radius,
             potential_cutoff,
-        )? / t;
+            t,
+        )?;
 
         // initialize convolver
         let grid = Grid::Cartesian3(x, y, z);
@@ -134,6 +135,7 @@ fn external_potential_3d<U: EosUnit, F: FluidParameters>(
     epsilon_ss: Array1<f64>,
     cutoff_radius: Option<QuantityScalar<U>>,
     potential_cutoff: Option<f64>,
+    reduced_temperature: f64,
 ) -> EosResult<Array4<f64>> {
     // allocate external potential
     let m = functional.m();
@@ -171,7 +173,8 @@ fn external_potential_3d<U: EosUnit, F: FluidParameters>(
                     cutoff_radius2,
                 )
             })
-            .sum()
+            .sum::<f64>()
+            / reduced_temperature
     });
 
     let potential_cutoff = potential_cutoff.unwrap_or(MAX_POTENTIAL);
