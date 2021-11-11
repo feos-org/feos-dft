@@ -153,7 +153,7 @@ fn calculate_distance2(
     coordinates: &Array2<f64>,
     system_size: [f64; 3],
 ) -> Array1<f64> {
-    let distance2 = Array1::from_shape_fn(coordinates.ncols(), |i| {
+    Array1::from_shape_fn(coordinates.ncols(), |i| {
         let mut rx = coordinates[[0, i]] - point[0];
         let mut ry = coordinates[[1, i]] - point[1];
         let mut rz = coordinates[[2, i]] - point[2];
@@ -163,7 +163,5 @@ fn calculate_distance2(
         rz = rz - system_size[2] * (rz / system_size[2]).round();
 
         rx.powi(2) + ry.powi(2) + rz.powi(2)
-    });
-
-    distance2
+    })
 }

@@ -52,8 +52,25 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
     fn weight_functions(&self, temperature: N) -> WeightFunctionInfo<N> {
         let r = self.properties.hs_diameter(temperature) * 0.5;
         let m = self.properties.chain_length();
-        match self.version {
-            FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear => {
+        match (self.version, m.len()) {
+            (FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear, 1) => {
+                WeightFunctionInfo::new(self.properties.component_index(), false).extend(
+                    vec![
+                        WeightFunctionShape::Delta,
+                        WeightFunctionShape::Theta,
+                        WeightFunctionShape::DeltaVec,
+                    ]
+                    .into_iter()
+                    .map(|s| WeightFunction {
+                        prefactor: self.properties.chain_length().mapv(|m| m.into()),
+                        kernel_radius: r.clone(),
+                        shape: s,
+                    })
+                    .collect(),
+                    false,
+                )
+            }
+            (FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear, _) => {
                 WeightFunctionInfo::new(self.properties.component_index(), false)
                     .add(
                         WeightFunction {
@@ -110,7 +127,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                         true,
                     )
             }
-            FMTVersion::KierlikRosinberg => {
+            (FMTVersion::KierlikRosinberg, _) => {
                 WeightFunctionInfo::new(self.properties.component_index(), false).extend(
                     vec![
                         WeightFunctionShape::KR0,
@@ -133,46 +150,114 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
 
     fn calculate_helmholtz_energy_density(
         &self,
-        _: N,
+        temperature: N,
         weighted_densities: ArrayView2<N>,
     ) -> EosResult<Array1<N>> {
-        // number of dimensions
-        let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
+        let pure_component_weighted_densities = matches!(
+            self.version,
+            FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear
+        ) && self.properties.chain_length().len() == 1;
 
-        // weighted densities
-        let n0 = weighted_densities.index_axis(Axis(0), 0);
-        let n1 = weighted_densities.index_axis(Axis(0), 1);
-        let n2 = weighted_densities.index_axis(Axis(0), 2);
-        let n3 = weighted_densities.index_axis(Axis(0), 3);
+        // scalar weighted densities
+        let (n2, n3) = if pure_component_weighted_densities {
+            (
+                weighted_densities.index_axis(Axis(0), 0),
+                weighted_densities.index_axis(Axis(0), 1),
+            )
+        } else {
+            (
+                weighted_densities.index_axis(Axis(0), 2),
+                weighted_densities.index_axis(Axis(0), 3),
+            )
+        };
 
+        let (n0, n1) = if pure_component_weighted_densities {
+            let r = self.properties.hs_diameter(temperature)[0] * 0.5;
+            (
+                n2.mapv(|n2| n2 / (r * r * 4.0 * PI)),
+                n2.mapv(|n2| n2 / (r * 4.0 * PI)),
+            )
+        } else {
+            (
+                weighted_densities.index_axis(Axis(0), 0).to_owned(),
+                weighted_densities.index_axis(Axis(0), 1).to_owned(),
+            )
+        };
+
+        // vector weighted densities
         let (n1n2, n2n2) = match self.version {
-            FMTVersion::WhiteBear => {
-                let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
-                let n2v = weighted_densities
-                    .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
-                (
-                    &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-                    &n2 * &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * &n2 * 3.0,
-                )
-            }
-            FMTVersion::AntiSymWhiteBear => {
-                let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
-                let n2v = weighted_densities
-                    .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
-
-                let mut xi2 = (&n2v * &n2v).sum_axis(Axis(0)) / n2.map(|n| n.powi(2));
-
-                xi2.iter_mut().for_each(|x| {
-                    if x.re() > 1.0 {
-                        *x = N::one()
+            FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear => {
+                let (n1v, n2v) = if pure_component_weighted_densities {
+                    let r = self.properties.hs_diameter(temperature)[0] * 0.5;
+                    let n2v = weighted_densities.slice_axis(Axis(0), Slice::new(2, None, 1));
+                    (n2v.mapv(|n2v| n2v / (r * 4.0 * PI)), n2v)
+                } else {
+                    let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
+                    (
+                        weighted_densities
+                            .slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1))
+                            .to_owned(),
+                        weighted_densities
+                            .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1)),
+                    )
+                };
+                match self.version {
+                    FMTVersion::WhiteBear => (
+                        &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+                        &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
+                    ),
+                    FMTVersion::AntiSymWhiteBear => {
+                        let mut xi2 = (&n2v * &n2v).sum_axis(Axis(0)) / n2.map(|n| n.powi(2));
+                        xi2.iter_mut().for_each(|x| {
+                            if x.re() > 1.0 {
+                                *x = N::one()
+                            }
+                        });
+                        (
+                            &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+                            &n2 * &n2 * xi2.mapv(|x| (-x + 1.0).powi(3)),
+                        )
                     }
-                });
-                (
-                    &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-                    &n2 * &n2 * &n2 * xi2.mapv(|x| (-x + 1.0).powi(3)),
-                )
+                    _ => unreachable!(),
+                }
+
+                // let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
+                // let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
+                // let n2v = weighted_densities
+                //     .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
+                // (
+                //     &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+                //     &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
+                // )
             }
-            FMTVersion::KierlikRosinberg => (&n1 * &n2, &n2 * &n2 * &n2),
+            // FMTVersion::PureWhiteBear => {
+            //     let r = self.properties.hs_diameter(temperature)[0] * 0.5;
+            //     let n2v = weighted_densities.slice_axis(Axis(0), Slice::new(2, None, 1));
+            //     let n1v = n2v.mapv(|n2v| n2v / (r * 4.0 * PI));
+            //     (
+            //         &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+            //         &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
+            //     )
+            // }
+            // FMTVersion::AntiSymWhiteBear => {
+            //     let dim = ((weighted_densities.shape()[0] - 4) / 2) as isize;
+            //     let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
+            //     let n2v = weighted_densities
+            //         .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
+
+            //     let mut xi2 = (&n2v * &n2v).sum_axis(Axis(0)) / n2.map(|n| n.powi(2));
+
+            //     xi2.iter_mut().for_each(|x| {
+            //         if x.re() > 1.0 {
+            //             *x = N::one()
+            //         }
+            //     });
+            //     (
+            //         &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+            //         &n2 * &n2 * xi2.mapv(|x| (-x + 1.0).powi(3)),
+            //     )
+            // }
+            FMTVersion::KierlikRosinberg => (&n1 * &n2, &n2 * &n2),
         };
 
         // auxiliary variables
@@ -188,7 +273,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                 *f3 = (((n3 * 35.0 / 6.0 + 4.8) * n3 + 3.75) * n3 + 8.0 / 3.0) * n3 + 1.5;
             }
         });
-        Ok(-(&n0 * &ln31) + n1n2 * &n3m1rec + n2n2 * PI36M1 * f3)
+        Ok(-(&n0 * &ln31) + n1n2 * &n3m1rec + n2n2 * n2 * PI36M1 * f3)
     }
 }
 
