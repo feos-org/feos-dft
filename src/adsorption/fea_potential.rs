@@ -1,8 +1,8 @@
 use crate::profile::{CUTOFF_RADIUS, MAX_POTENTIAL};
 use crate::AxisGeometry;
-use feos_core::{EosResult, EosUnit};
+use feos_core::EosUnit;
 use gauss_quad::GaussLegendre;
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, Zip};
 use ndarray_stats::SummaryStatisticsExt;
 use quantity::{QuantityArray2, QuantityScalar};
 use std::f64::consts::PI;
@@ -21,6 +21,9 @@ pub fn calculate_fea_potential<U: EosUnit>(
     temperature: f64,
     geometry: AxisGeometry,
 ) -> Array1<f64> {
+    // allocate external potential
+    let mut potential: Array1<f64> = Array1::zeros(grid.len());
+
     // calculate squared cutoff radius
     let cutoff_radius2 = CUTOFF_RADIUS.powi(2);
 
@@ -88,28 +91,26 @@ pub fn calculate_fea_potential<U: EosUnit>(
     // calculate sum of weights
     let weights_sum = weights.sum();
 
-    // allocate external potential
-    let mut potential_2d: Array2<f64> = Array2::zeros((n_grid[0], n_grid[1]));
-    let mut potential: Array1<f64> = Array1::zeros(grid.len());
-
-    for (i0, &n0) in grid.iter().enumerate() {
+    // calculate FEA potential
+    Zip::indexed(&mut potential).par_for_each(|i0, f| {
+        let mut potential_2d: Array2<f64> = Array2::zeros((n_grid[0], n_grid[1]));
         for (i1, &n1) in nodes1.iter().enumerate() {
             for (i2, &n2) in nodes2.iter().enumerate() {
                 let point = match geometry {
-                    AxisGeometry::Cartesian => [n0, n1, n2],
+                    AxisGeometry::Cartesian => [grid[i0], n1, n2],
                     AxisGeometry::Polar => [
-                        pore_center[0] + n0 * n1.cos(),
-                        pore_center[1] + n0 * n1.sin(),
+                        pore_center[0] + grid[i0] * n1.cos(),
+                        pore_center[1] + grid[i0] * n1.sin(),
                         n2,
                     ],
                     AxisGeometry::Spherical => [
-                        pore_center[0] + n0 * n2.sin() * n1.cos(),
-                        pore_center[1] + n0 * n2.sin() * n1.sin(),
-                        pore_center[2] + n0 * n2.cos(),
+                        pore_center[0] + grid[i0] * n2.sin() * n1.cos(),
+                        pore_center[1] + grid[i0] * n2.sin() * n1.sin(),
+                        pore_center[2] + grid[i0] * n2.cos(),
                     ],
                 };
 
-                let distance2 = calculate_distance2(point, &coordinates, system_size).unwrap();
+                let distance2 = calculate_distance2(point, &coordinates, system_size);
                 let potential_sum: f64 = (0..sigma_sf.len())
                     .map(|alpha| {
                         mi * evaluate(
@@ -120,15 +121,16 @@ pub fn calculate_fea_potential<U: EosUnit>(
                         ) / temperature
                     })
                     .sum();
-
                 potential_2d[[i1, i2]] = (-potential_sum.min(MAX_POTENTIAL)).exp();
             }
         }
-        potential[i0] = potential_2d.weighted_sum(&weights).unwrap();
-    }
+        *f = potential_2d.weighted_sum(&weights).unwrap();
+    });
 
     -temperature * potential.map(|p| (p / weights_sum).ln())
 }
+
+// -temperature * potential.map(|p| (p / weights_sum).ln())
 
 /// Evaluate LJ12-6 potential between solid site "alpha" and fluid segment
 fn evaluate(distance2: f64, sigma: f64, epsilon: f64, cutoff_radius2: f64) -> f64 {
@@ -150,7 +152,7 @@ fn calculate_distance2(
     point: [f64; 3],
     coordinates: &Array2<f64>,
     system_size: [f64; 3],
-) -> EosResult<Array1<f64>> {
+) -> Array1<f64> {
     let distance2 = Array1::from_shape_fn(coordinates.ncols(), |i| {
         let mut rx = coordinates[[0, i]] - point[0];
         let mut ry = coordinates[[1, i]] - point[1];
@@ -163,5 +165,5 @@ fn calculate_distance2(
         rx.powi(2) + ry.powi(2) + rz.powi(2)
     });
 
-    Ok(distance2)
+    distance2
 }

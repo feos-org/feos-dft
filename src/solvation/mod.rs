@@ -7,6 +7,7 @@ use crate::profile::{DFTProfile, CUTOFF_RADIUS, MAX_POTENTIAL};
 use crate::solver::DFTSolver;
 use feos_core::{Contributions, EosResult, EosUnit, State};
 use ndarray::prelude::*;
+use ndarray::Zip;
 use quantity::{QuantityArray2, QuantityScalar};
 
 mod pair_correlation;
@@ -110,7 +111,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> SolvationProfil
             epsilon_ss,
             cutoff_radius,
             potential_cutoff,
-        )? / t;
+            t,
+        )?;
 
         // initialize convolver
         let grid = Grid::Cartesian3(x, y, z);
@@ -133,6 +135,7 @@ fn external_potential_3d<U: EosUnit, F: FluidParameters>(
     epsilon_ss: Array1<f64>,
     cutoff_radius: Option<QuantityScalar<U>>,
     potential_cutoff: Option<f64>,
+    reduced_temperature: f64,
 ) -> EosResult<Array4<f64>> {
     // allocate external potential
     let m = functional.m();
@@ -151,27 +154,28 @@ fn external_potential_3d<U: EosUnit, F: FluidParameters>(
     let cutoff_radius2 = cutoff_radius.powi(2);
 
     // calculate external potential
-    for (ix, &x) in axis[0].grid.iter().enumerate() {
-        for (iy, &y) in axis[1].grid.iter().enumerate() {
-            for (iz, &z) in axis[2].grid.iter().enumerate() {
-                let distance2 = calculate_distance2([&x, &y, &z], &coordinates)?;
-                for (i, &mi) in m.iter().enumerate() {
-                    let sigma_sf = sigma_ss.mapv(|s| (s + functional.sigma_ff()[i]) / 2.0);
-                    let epsilon_sf = epsilon_ss.mapv(|e| (e * functional.epsilon_k_ff()[i]).sqrt());
-                    external_potential[[i, ix, iy, iz]] = (0..sigma_ss.len())
-                        .map(|alpha| {
-                            mi * evaluate(
-                                distance2[alpha],
-                                sigma_sf[alpha],
-                                epsilon_sf[alpha],
-                                cutoff_radius2,
-                            )
-                        })
-                        .sum();
-                }
-            }
-        }
-    }
+    let sigma_ff = functional.sigma_ff();
+    let epsilon_k_ff = functional.epsilon_k_ff();
+
+    Zip::indexed(&mut external_potential).par_for_each(|(i, ix, iy, iz), u| {
+        let distance2 = calculate_distance2(
+            [&axis[0].grid[ix], &axis[1].grid[iy], &axis[2].grid[iz]],
+            &coordinates,
+        );
+        let sigma_sf = sigma_ss.mapv(|s| (s + sigma_ff[i]) / 2.0);
+        let epsilon_sf = epsilon_ss.mapv(|e| (e * epsilon_k_ff[i]).sqrt());
+        *u = (0..sigma_ss.len())
+            .map(|alpha| {
+                m[i] * evaluate(
+                    distance2[alpha],
+                    sigma_sf[alpha],
+                    epsilon_sf[alpha],
+                    cutoff_radius2,
+                )
+            })
+            .sum::<f64>()
+            / reduced_temperature
+    });
 
     let potential_cutoff = potential_cutoff.unwrap_or(MAX_POTENTIAL);
     external_potential.map_inplace(|x| {
@@ -199,7 +203,7 @@ fn evaluate(distance2: f64, sigma: f64, epsilon: f64, cutoff_radius2: f64) -> f6
 }
 
 /// Evaluate the squared euclidian distance between a point and the coordinates of all solid atoms.
-fn calculate_distance2(point: [&f64; 3], coordinates: &Array2<f64>) -> EosResult<Array1<f64>> {
+fn calculate_distance2(point: [&f64; 3], coordinates: &Array2<f64>) -> Array1<f64> {
     let distance2 = Array1::from_shape_fn(coordinates.ncols(), |i| {
         let rx = coordinates[[0, i]] - point[0];
         let ry = coordinates[[1, i]] - point[1];
@@ -208,5 +212,5 @@ fn calculate_distance2(point: [&f64; 3], coordinates: &Array2<f64>) -> EosResult
         rx.powi(2) + ry.powi(2) + rz.powi(2)
     });
 
-    Ok(distance2)
+    distance2
 }

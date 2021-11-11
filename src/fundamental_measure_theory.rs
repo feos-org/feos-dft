@@ -28,6 +28,8 @@ pub enum FMTVersion {
     WhiteBear,
     /// Scalar fundamental measure theory by [Kierlik and Rosinberg, 1990](https://doi.org/10.1103/PhysRevA.42.3382)
     KierlikRosinberg,
+    /// Anti-symmetric White Bear fundamental measure theory ([Rosenfeld et al., 1997](https://doi.org/10.1103/PhysRevE.55.4245)) and SI of ([Kessler et al., 2021](https://doi.org/10.1016/j.micromeso.2021.111263))
+    AntiSymWhiteBear,
 }
 
 /// The [FunctionalContribution] for the hard sphere functional.
@@ -51,7 +53,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
         let r = self.properties.hs_diameter(temperature) * 0.5;
         let m = self.properties.chain_length();
         match self.version {
-            FMTVersion::WhiteBear => {
+            FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear => {
                 WeightFunctionInfo::new(self.properties.component_index(), false)
                     .add(
                         WeightFunction {
@@ -150,10 +152,27 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
                 (
                     &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
-                    &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * 3.0,
+                    &n2 * &n2 * &n2 - (&n2v * &n2v).sum_axis(Axis(0)) * &n2 * 3.0,
                 )
             }
-            FMTVersion::KierlikRosinberg => (&n1 * &n2, &n2 * &n2),
+            FMTVersion::AntiSymWhiteBear => {
+                let n1v = weighted_densities.slice_axis(Axis(0), Slice::new(4, Some(4 + dim), 1));
+                let n2v = weighted_densities
+                    .slice_axis(Axis(0), Slice::new(4 + dim, Some(4 + 2 * dim), 1));
+
+                let mut xi2 = (&n2v * &n2v).sum_axis(Axis(0)) / n2.map(|n| n.powi(2));
+
+                xi2.iter_mut().for_each(|x| {
+                    if x.re() > 1.0 {
+                        *x = N::one()
+                    }
+                });
+                (
+                    &n1 * &n2 - (&n1v * &n2v).sum_axis(Axis(0)),
+                    &n2 * &n2 * &n2 * xi2.mapv(|x| (-x + 1.0).powi(3)),
+                )
+            }
+            FMTVersion::KierlikRosinberg => (&n1 * &n2, &n2 * &n2 * &n2),
         };
 
         // auxiliary variables
@@ -169,7 +188,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                 *f3 = (((n3 * 35.0 / 6.0 + 4.8) * n3 + 3.75) * n3 + 8.0 / 3.0) * n3 + 1.5;
             }
         });
-        Ok(-(&n0 * &ln31) + n1n2 * &n3m1rec + n2n2 * n2 * PI36M1 * f3)
+        Ok(-(&n0 * &ln31) + n1n2 * &n3m1rec + n2n2 * PI36M1 * f3)
     }
 }
 
@@ -178,6 +197,7 @@ impl<P: FMTProperties> fmt::Display for FMTContribution<P> {
         let ver = match self.version {
             FMTVersion::WhiteBear => "WB",
             FMTVersion::KierlikRosinberg => "KR",
+            FMTVersion::AntiSymWhiteBear => "AntiSymWB",
         };
         write!(f, "FMT functional ({})", ver)
     }
