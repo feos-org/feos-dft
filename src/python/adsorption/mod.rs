@@ -2,6 +2,7 @@ mod external_potential;
 mod pore;
 
 pub use external_potential::{PyExternalPotential, PyGeometry};
+pub use pore::PyDFTSpecification;
 
 #[macro_export]
 macro_rules! impl_adsorption {

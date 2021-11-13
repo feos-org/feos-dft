@@ -60,6 +60,11 @@ macro_rules! impl_profile {
             }
 
             #[getter]
+            fn get_volume(&self) -> PySINumber {
+                PySINumber::from(self.0.profile.volume())
+            }
+
+            #[getter]
             fn get_density(&self) -> $si_arr2 {
                 $si_arr2::from(self.0.profile.density.clone())
             }

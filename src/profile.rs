@@ -33,6 +33,7 @@ pub trait DFTSpecification<U, D: Dimension, F> {
 }
 
 /// Common specifications for the grand potentials in a DFT calculation.
+#[derive(Clone)]
 pub enum DFTSpecifications {
     /// DFT with specified chemical potential.
     ChemicalPotential,
@@ -47,6 +48,12 @@ pub enum DFTSpecifications {
         total_moles: f64,
         chemical_potential: Array1<f64>,
     },
+}
+
+impl Default for DFTSpecifications {
+    fn default() -> Self {
+        Self::ChemicalPotential
+    }
 }
 
 impl DFTSpecifications {
@@ -198,6 +205,7 @@ where
         convolver: Rc<dyn Convolver<f64, D>>,
         bulk: &State<U, DFT<F>>,
         external_potential: Option<Array<f64, D::Larger>>,
+        specification: Option<DFTSpecifications>,
     ) -> EosResult<Self> {
         let dft = bulk.eos.clone();
 
@@ -224,6 +232,9 @@ where
                 .assign(&(isaft.index_axis(Axis_nd(0), s).map(|is| is.min(1.0)) * bulk_density[c]));
         }
 
+        // initialize DFT specification
+        let specification = specification.unwrap_or_default();
+
         Ok(Self {
             grid,
             convolver,
@@ -231,7 +242,7 @@ where
             temperature: bulk.temperature,
             density: density * U::reference_density(),
             chemical_potential: bulk.chemical_potential(Contributions::Total),
-            specification: Rc::new(DFTSpecifications::ChemicalPotential),
+            specification: Rc::new(specification),
             external_potential,
             bulk: bulk.clone(),
         })

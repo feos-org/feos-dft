@@ -1,4 +1,4 @@
-use super::{PyDFTSolver, PyExternalPotential, PyGeometry};
+use super::{PyDFTSolver, PyDFTSpecification, PyExternalPotential, PyGeometry};
 use crate::adsorption::*;
 use crate::functional::DFT;
 use crate::fundamental_measure_theory::{FMTFunctional, FMTVersion};
