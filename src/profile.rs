@@ -63,14 +63,14 @@ impl DFTSpecifications {
     /// particles constant in systems, where the number itself is difficult to obtain.
     pub fn moles_from_profile<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional>(
         profile: &DFTProfile<U, D, F>,
-    ) -> EosResult<Rc<Self>>
+    ) -> EosResult<Self>
     where
         <D as Dimension>::Larger: Dimension<Smaller = D>,
     {
         let rho = profile.density.to_reduced(U::reference_density())?;
-        Ok(Rc::new(Self::Moles {
+        Ok(Self::Moles {
             moles: profile.integrate_reduced_comp(&rho),
-        }))
+        })
     }
 
     /// Calculate the number of particles from the profile.
