@@ -33,6 +33,7 @@ pub trait DFTSpecification<U, D: Dimension, F> {
 }
 
 /// Common specifications for the grand potentials in a DFT calculation.
+#[derive(Clone)]
 pub enum DFTSpecifications {
     /// DFT with specified chemical potential.
     ChemicalPotential,
@@ -49,6 +50,12 @@ pub enum DFTSpecifications {
     },
 }
 
+impl Default for DFTSpecifications {
+    fn default() -> Self {
+        Self::ChemicalPotential
+    }
+}
+
 impl DFTSpecifications {
     /// Calculate the number of particles from the profile.
     ///
@@ -56,14 +63,14 @@ impl DFTSpecifications {
     /// particles constant in systems, where the number itself is difficult to obtain.
     pub fn moles_from_profile<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional>(
         profile: &DFTProfile<U, D, F>,
-    ) -> EosResult<Rc<Self>>
+    ) -> EosResult<Self>
     where
         <D as Dimension>::Larger: Dimension<Smaller = D>,
     {
         let rho = profile.density.to_reduced(U::reference_density())?;
-        Ok(Rc::new(Self::Moles {
+        Ok(Self::Moles {
             moles: profile.integrate_reduced_comp(&rho),
-        }))
+        })
     }
 
     /// Calculate the number of particles from the profile.
@@ -198,6 +205,7 @@ where
         convolver: Rc<dyn Convolver<f64, D>>,
         bulk: &State<U, DFT<F>>,
         external_potential: Option<Array<f64, D::Larger>>,
+        specification: Option<DFTSpecifications>,
     ) -> EosResult<Self> {
         let dft = bulk.eos.clone();
 
@@ -224,6 +232,9 @@ where
                 .assign(&(isaft.index_axis(Axis_nd(0), s).map(|is| is.min(1.0)) * bulk_density[c]));
         }
 
+        // initialize DFT specification
+        let specification = specification.unwrap_or_default();
+
         Ok(Self {
             grid,
             convolver,
@@ -231,7 +242,7 @@ where
             temperature: bulk.temperature,
             density: density * U::reference_density(),
             chemical_potential: bulk.chemical_potential(Contributions::Total),
-            specification: Rc::new(DFTSpecifications::ChemicalPotential),
+            specification: Rc::new(specification),
             external_potential,
             bulk: bulk.clone(),
         })

@@ -1,3 +1,7 @@
+use crate::profile::DFTSpecifications;
+use numpy::PyArray1;
+use pyo3::prelude::*;
+
 #[macro_export]
 macro_rules! impl_pore {
     ($func:ty, $py_func:ty) => {
@@ -17,11 +21,9 @@ macro_rules! impl_pore {
         ///     The number of grid points.
         /// potential_cutoff : float, optional
         ///     Maximum value for the external potential.
-        ///
         /// Returns
         /// -------
         /// Pore1D
-        ///
         #[pyclass(name = "Pore1D", unsendable)]
         #[pyo3(text_signature = "(functional, geometry, pore_size, potential, n_grid=None, potential_cutoff=None)")]
         pub struct PyPore1D(Pore1D<SIUnit, $func>);
@@ -62,19 +64,23 @@ macro_rules! impl_pore {
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
             ///     evaluations of external potentials.
+            /// specification : DFTSpecification, optional
+            ///     Common specifications for the grand potential in a DFT calculation.
             ///
             /// Returns
             /// -------
             /// PoreProfile1D
-            #[pyo3(text_signature = "(bulk, external_potential=None)")]
+            #[pyo3(text_signature = "(bulk, external_potential=None, specification=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,
                 external_potential: Option<&PyArray2<f64>>,
+                specification: Option<PyDFTSpecification>
             ) -> PyResult<PyPoreProfile1D> {
                 Ok(PyPoreProfile1D(self.0.initialize(
                     &bulk.0,
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
+                    specification.map(|s| s.0)
                 )?))
             }
         }
@@ -112,7 +118,6 @@ macro_rules! impl_pore {
         ///     Maximum value for the external potential.
         /// cutoff_radius: SINumber, optional
         ///     The cutoff radius for the calculation of solid-fluid interactions.
-        ///
         /// Returns
         /// -------
         /// Pore3D
@@ -147,7 +152,7 @@ macro_rules! impl_pore {
                     sigma_ss.to_owned_array(),
                     epsilon_k_ss.to_owned_array(),
                     potential_cutoff,
-                    cutoff_radius.map(|c| c.into()),
+                    cutoff_radius.map(|c| c.into())
                 ))
             }
 
@@ -161,19 +166,23 @@ macro_rules! impl_pore {
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
             ///     evaluations of external potentials.
+            /// specification : DFTSpecification, optional
+            ///     Common specifications for the grand potential in a DFT calculation.
             ///
             /// Returns
             /// -------
             /// PoreProfile3D
-            #[pyo3(text_signature = "(bulk, external_potential=None)")]
+            #[pyo3(text_signature = "(bulk, external_potential=None, specification=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,
                 external_potential: Option<&PyArray4<f64>>,
+                specification: Option<PyDFTSpecification>
             ) -> PyResult<PyPoreProfile3D> {
                 Ok(PyPoreProfile3D(self.0.initialize(
                     &bulk.0,
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
+                    specification.map(|s| s.0)
                 )?))
             }
         }
@@ -191,4 +200,64 @@ macro_rules! impl_pore {
             }
         }
     };
+}
+
+#[pyclass(name = "DFTSpecification", unsendable)]
+#[derive(Clone)]
+pub struct PyDFTSpecification(pub DFTSpecifications);
+
+#[pymethods]
+#[allow(non_snake_case)]
+impl PyDFTSpecification {
+    /// DFT with specified chemical potential.
+    ///
+    /// Returns
+    /// -------
+    /// DFTSpecification
+    #[staticmethod]
+    #[allow(non_snake_case)]
+    #[pyo3(text_signature = "")]
+    pub fn ChemicalPotential() -> Self {
+        Self(DFTSpecifications::ChemicalPotential)
+    }
+
+    /// DFT with specified number of particles.
+    ///
+    /// Parameters
+    /// ----------
+    /// moles : PyArray
+    ///     Number of particles for each component.
+    ///
+    /// Returns
+    /// -------
+    /// DFTSpecification
+    #[staticmethod]
+    #[allow(non_snake_case)]
+    #[pyo3(text_signature = "(moles)")]
+    pub fn Moles(moles: &PyArray1<f64>) -> Self {
+        Self(DFTSpecifications::Moles {
+            moles: moles.to_owned_array(),
+        })
+    }
+    /// DFT with specified total number of moles and chemical potential differences.
+    ///
+    /// Parameters:
+    /// -----------
+    /// total_moles : float
+    ///     Total number of particles.
+    /// chemical_potential : PyArray
+    ///     Chemical potential difference.
+    ///
+    /// Returns
+    /// -------
+    /// DFTSpecification
+    #[staticmethod]
+    #[allow(non_snake_case)]
+    #[pyo3(text_signature = "(total_moles, chemical_potential)")]
+    pub fn TotalMoles(total_moles: f64, chemical_potential: &PyArray1<f64>) -> Self {
+        Self(DFTSpecifications::TotalMoles {
+            total_moles,
+            chemical_potential: chemical_potential.to_owned_array(),
+        })
+    }
 }
