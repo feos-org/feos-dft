@@ -75,7 +75,7 @@ macro_rules! impl_solvation_profile {
 #[macro_export]
 macro_rules! impl_pair_correlation {
     ($func:ty) => {
-        /// A one-dimensional initial density profile of a fluid in a pore.
+        /// Density profile and properties of a test particle system.
         ///
         /// Parameters
         /// ----------
