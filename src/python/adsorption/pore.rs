@@ -1,11 +1,11 @@
 #[macro_export]
 macro_rules! impl_pore {
     ($func:ty, $py_func:ty) => {
-        /// A one-dimensional density profile of a fluid in a pore.
+        /// Parameters required to specify a 1D pore.
         ///
         /// Parameters
         /// ----------
-        /// functional : $func
+        /// functional : HelmholtzEnergyFunctional
         ///     The Helmholtz energy functional.
         /// geometry : Geometry
         ///     The pore geometry.
@@ -52,13 +52,13 @@ macro_rules! impl_pore {
                 ))
             }
 
-            /// Initialize the pore for the given bulk state
+            /// Initialize the pore for the given bulk state.
             ///
             /// Parameters
             /// ----------
             /// bulk : State
             ///     The bulk state in equilibrium with the pore.
-            /// external_potential : Array2, optional
+            /// external_potential : numpy.ndarray[float], optional
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
             ///     evaluations of external potentials.
@@ -66,7 +66,7 @@ macro_rules! impl_pore {
             /// Returns
             /// -------
             /// PoreProfile1D
-            #[pyo3(text_signature = "(bulk, external_potential=None)")]
+            #[pyo3(text_signature = "($self, bulk, external_potential=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,
@@ -92,21 +92,21 @@ macro_rules! impl_pore {
             }
         }
 
-        /// A three-dimensional density profile of a fluid in a pore.
+        /// Parameters required to specify a 3D pore.
         ///
         /// Parameters
         /// ----------
-        /// functional : $func
+        /// functional : HelmholtzEnergyFunctional
         ///     The Helmholtz energy functional.
         /// system_size : [SINumber; 3]
         ///     The size of the unit cell.
         /// n_grid : [int; 3]
         ///     The number of grid points in each direction.
-        /// coordinates : SIArray2
+        /// coordinates : numpy.ndarray[float]
         ///     The positions of all interaction sites in the solid.
-        /// sigma_ss : Array1
+        /// sigma_ss : numpy.ndarray[float]
         ///     The size parameters of all interaction sites.
-        /// epsilon_k_ss : Array1
+        /// epsilon_k_ss : numpy.ndarray[float]
         ///     The energy parameter of all interaction sites.
         /// potential_cutoff: float, optional
         ///     Maximum value for the external potential.
@@ -151,13 +151,13 @@ macro_rules! impl_pore {
                 ))
             }
 
-            /// Initialize the pore for the given bulk state
+            /// Initialize the pore for the given bulk state.
             ///
             /// Parameters
             /// ----------
             /// bulk : State
             ///     The bulk state in equilibrium with the pore.
-            /// external_potential : Array4, optional
+            /// external_potential : numpy.ndarray[float], optional
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
             ///     evaluations of external potentials.
@@ -165,7 +165,7 @@ macro_rules! impl_pore {
             /// Returns
             /// -------
             /// PoreProfile3D
-            #[pyo3(text_signature = "(bulk, external_potential=None)")]
+            #[pyo3(text_signature = "($self, bulk, external_potential=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,

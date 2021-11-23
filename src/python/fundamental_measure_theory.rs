@@ -13,6 +13,7 @@ use quantity::python::*;
 use quantity::si::*;
 use std::rc::Rc;
 
+/// Different versions of fundamental measure theory
 #[pyclass(name = "FMTVersion")]
 #[derive(Clone, Copy)]
 pub struct PyFMTVersion(pub FMTVersion);
@@ -43,7 +44,7 @@ impl PyFMTVersion {
 ///
 /// Parameters
 /// ----------
-/// sigma : Array1
+/// sigma : numpy.ndarray[float]
 ///     The diameters of the hard spheres in Angstrom.
 /// version : FMTVersion
 ///     The specific version of FMT to be used.

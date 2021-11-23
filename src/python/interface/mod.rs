@@ -3,7 +3,7 @@ mod surface_tension_diagram;
 #[macro_export]
 macro_rules! impl_planar_interface {
     ($func:ty) => {
-        /// A one-dimensional initial density profile of a vapor-liquid or liquid-liquid interface.
+        /// A one-dimensional density profile of a vapor-liquid or liquid-liquid interface.
         #[pyclass(name = "PlanarInterface", unsendable)]
         pub struct PyPlanarInterface(PlanarInterface<SIUnit, $func>);
 

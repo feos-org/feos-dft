@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! impl_surface_tension_diagram {
     ($func:ty) => {
-        /// Calculate a surface tension diagram for a pure component.
+        /// Container structure for the efficient calculation of surface tension diagrams.
         ///
         /// Parameters
         /// ----------

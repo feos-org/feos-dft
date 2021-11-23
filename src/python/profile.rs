@@ -12,10 +12,10 @@ macro_rules! impl_profile {
             ///
             /// Returns
             /// -------
-            /// (Array2, Array1)
+            /// (numpy.ndarray[float], numpy.ndarray[float])
             ///
-            #[pyo3(text_signature = "(log=False)")]
             #[args(log = "false")]
+            #[pyo3(text_signature = "($self, log)")]
             fn residual<'py>(
                 &self,
                 log: bool,
@@ -39,8 +39,8 @@ macro_rules! impl_profile {
             /// -------
             /// $struct
             ///
-            #[pyo3(text_signature = "(solver=None, debug=False)")]
-            #[args(solver = "None", debug = "false")]
+            #[args(debug = "false")]
+            #[pyo3(text_signature = "($self, solver=None, debug=False)")]
             fn solve(slf: &PyCell<Self>, solver: Option<PyDFTSolver>, debug: bool) -> PyResult<&PyCell<Self>> {
                 slf.borrow_mut()
                     .0
@@ -106,6 +106,17 @@ macro_rules! impl_profile {
                 Ok(self.0.profile.functional_derivative()?.view().to_pyarray(py))
             }
 
+            /// Calculate the entropy density of the inhomogeneous system.
+            ///
+            /// Parameters
+            /// ----------
+            /// contributions: Contributions, optional
+            ///     the contributions of the helmholtz energy.
+            ///     Defaults to Contributions.Total.
+            ///
+            /// Returns
+            /// -------
+            /// SIArray
             #[args(contributions = "PyContributions::Total()")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn entropy_density(
@@ -117,6 +128,17 @@ macro_rules! impl_profile {
                 ))
             }
 
+            /// Calculate the entropy of the inhomogeneous system.
+            ///
+            /// Parameters
+            /// ----------
+            /// contributions: Contributions, optional
+            ///     the contributions of the helmholtz energy.
+            ///     Defaults to Contributions.Total.
+            ///
+            /// Returns
+            /// -------
+            /// SINumber
             #[args(contributions = "PyContributions::Total()")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn entropy(
@@ -128,6 +150,17 @@ macro_rules! impl_profile {
                 ))
             }
 
+            /// Calculate the internal energy of the inhomogeneous system.
+            ///
+            /// Parameters
+            /// ----------
+            /// contributions: Contributions, optional
+            ///     the contributions of the helmholtz energy.
+            ///     Defaults to Contributions.Total.
+            ///
+            /// Returns
+            /// -------
+            /// SINumber
             #[args(contributions = "PyContributions::Total()")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn internal_energy(

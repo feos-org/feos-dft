@@ -5,6 +5,7 @@ use pyo3::prelude::*;
 use quantity::python::{PySIArray2, PySINumber};
 use quantity::si::*;
 
+/// A collection of external potentials.
 #[pyclass(name = "ExternalPotential", unsendable)]
 #[derive(Clone)]
 pub struct PyExternalPotential(pub ExternalPotential<SIUnit>);
@@ -12,11 +13,13 @@ pub struct PyExternalPotential(pub ExternalPotential<SIUnit>);
 #[pymethods]
 #[allow(non_snake_case)]
 impl PyExternalPotential {
-    /// A hard wall potential
+    /// Hard wall potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=\begin{cases}\infty&z\leq\sigma_{si}\\\\0&z>\sigma_{si}\end{cases},~~~~\sigma_{si}=\frac{1}{2}\left(\sigma_{ss}+\sigma_{ii}\right)
     ///
     /// Parameters
     /// ----------
-    /// sigma_ss : f64
+    /// sigma_ss : float
     ///     Segment diameter of the solid.
     ///
     /// Returns
@@ -30,15 +33,17 @@ impl PyExternalPotential {
         Self(ExternalPotential::HardWall { sigma_ss })
     }
 
-    /// Create a Lennard-Jones-9-3 potential.
+    /// 9-3 Lennard-Jones potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=\frac{2\pi}{45} m_i\varepsilon_{si}\sigma_{si}^3\rho_s\left(2\left(\frac{\sigma_{si}}{z}\right)^9-15\left(\frac{\sigma_{si}}{z}\right)^3\right),~~~~\varepsilon_{si}=\sqrt{\varepsilon_{ss}\varepsilon_{ii}},~~~~\sigma_{si}=\frac{1}{2}\left(\sigma_{ss}+\sigma_{ii}\right)
     ///
     /// Parameters
     /// ----------
-    /// sigma_ss : f64
+    /// sigma_ss : float
     ///     Segment diameter of the solid.
-    /// epsilon_k_ss : f64
+    /// epsilon_k_ss : float
     ///     Energy parameter of the solid.
-    /// rho_s : f64
+    /// rho_s : float
     ///     Density of the solid.
     ///
     /// Returns
@@ -55,13 +60,15 @@ impl PyExternalPotential {
         })
     }
 
-    /// Create a simple Lennard-Jones-9-3 potential.
+    /// Simple 9-3 Lennard-Jones potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=\varepsilon_{si}\left(\left(\frac{\sigma_{si}}{z}\right)^9-\left(\frac{\sigma_{si}}{z}\right)^3\right),~~~~\varepsilon_{si}=\sqrt{\varepsilon_{ss}\varepsilon_{ii}},~~~~\sigma_{si}=\frac{1}{2}\left(\sigma_{ss}+\sigma_{ii}\right)
     ///
     /// Parameters
     /// ----------
-    /// sigma_ss : f64
+    /// sigma_ss : float
     ///     Segment diameter of the solid.
-    /// epsilon_k_ss : f64
+    /// epsilon_k_ss : float
     ///     Energy parameter of the solid.
     ///
     /// Returns
@@ -77,13 +84,15 @@ impl PyExternalPotential {
         })
     }
 
-    /// Create a custom Lennard-Jones-9-3 potential.
+    /// Custom 9-3 Lennard-Jones potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=\varepsilon_{si}\left(\left(\frac{\sigma_{si}}{z}\right)^9-\left(\frac{\sigma_{si}}{z}\right)^3\right)
     ///
     /// Parameters
     /// ----------
-    /// sigma_sf : PyArray
+    /// sigma_sf : numpy.ndarray[float]
     ///     Solid-fluid interaction diameters.
-    /// epsilon_k_sf : PyArray
+    /// epsilon_k_sf : numpy.ndarray[float]
     ///     Solid-fluid interaction energies.
     ///
     /// Returns
@@ -99,17 +108,19 @@ impl PyExternalPotential {
         })
     }
 
-    /// Create a Steele potential.
+    /// Steele potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=2\pi m_i\xi\varepsilon_{si}\sigma_{si}^2\Delta\rho_s\left(0.4\left(\frac{\sigma_{si}}{z}\right)^{10}-\left(\frac{\sigma_{si}}{z}\right)^4-\frac{\sigma_{si}^4}{3\Delta\left(z+0.61\Delta\right)^3}\right),~~~~\varepsilon_{si}=\sqrt{\varepsilon_{ss}\varepsilon_{ii}},~~~~\sigma_{si}=\frac{1}{2}\left(\sigma_{ss}+\sigma_{ii}\right),~~~~\Delta=3.35
     ///
     /// Parameters
     /// ----------
-    /// sigma_ss : f64
+    /// sigma_ss : float
     ///     Segment diameter of the solid.
-    /// epsilon_k_ss : f64
+    /// epsilon_k_ss : float
     ///     Energy parameter of the solid.
-    /// rho_s : f64
+    /// rho_s : float
     ///     Density of the solid.
-    /// xi : f64, optional
+    /// xi : float, optional
     ///     Binary wall-fluid interaction parameter.
     ///
     /// Returns
@@ -127,17 +138,19 @@ impl PyExternalPotential {
         })
     }
 
-    /// Create a Double-Well potential.
+    /// Double well potential
+    ///
+    /// .. math:: V_i^\mathrm{ext}(z)=\mathrm{min}\left(\frac{2\pi}{45} m_i\varepsilon_{2si}\sigma_{si}^3\rho_s\left(2\left(\frac{2\sigma_{si}}{z}\right)^9-15\left(\frac{2\sigma_{si}}{z}\right)^3\right),0\right)+\frac{2\pi}{45} m_i\varepsilon_{1si}\sigma_{si}^3\rho_s\left(2\left(\frac{\sigma_{si}}{z}\right)^9-15\left(\frac{\sigma_{si}}{z}\right)^3\right),~~~~\varepsilon_{1si}=\sqrt{\varepsilon_{1ss}\varepsilon_{ii}},~~~~\varepsilon_{2si}=\sqrt{\varepsilon_{2ss}\varepsilon_{ii}},~~~~\sigma_{si}=\frac{1}{2}\left(\sigma_{ss}+\sigma_{ii}\right)
     ///
     /// Parameters
     /// ----------
-    /// sigma_ss : f64
+    /// sigma_ss : float
     ///     Segment diameter of the solid.
-    /// epsilon1_k_ss : f64
+    /// epsilon1_k_ss : float
     ///     Energy parameter of the first well.
-    /// epsilon2_k_ss : f64
+    /// epsilon2_k_ss : float
     ///     Energy parameter of the second well.
-    /// rho_s : f64
+    /// rho_s : float
     ///     Density of the solid.
     ///
     /// Returns
@@ -155,15 +168,17 @@ impl PyExternalPotential {
         })
     }
 
-    /// Create a Free-Energy averaged potential.
+    /// Free-energy averaged potential
+    ///
+    /// for details see: `J. Eller, J. Gross (2021) <https://pubs.acs.org/doi/abs/10.1021/acs.langmuir.0c03287>`_
     ///
     /// Parameters
     /// ----------
     /// coordinates: SIArray2
     ///     The positions of all interaction sites in the solid.
-    /// sigma_ss : Array1
+    /// sigma_ss : numpy.ndarray[float]
     ///     The size parameters of all interaction sites.
-    /// epsilon_k_ss : Array1
+    /// epsilon_k_ss : numpy.ndarray[float]
     ///     The energy parameter of all interaction sites.
     /// pore_center : [SINumber; 3]
     ///     The cartesian coordinates of the center of the pore
@@ -202,7 +217,7 @@ impl PyExternalPotential {
     }
 }
 
-/// Geometry of the 1-dimensional pore.
+/// Geometry of a one-dimensional pore.
 ///
 /// Returns
 /// -------
