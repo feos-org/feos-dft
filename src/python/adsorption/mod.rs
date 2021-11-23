@@ -6,9 +6,11 @@ pub use external_potential::{PyExternalPotential, PyGeometry};
 #[macro_export]
 macro_rules! impl_adsorption {
     ($func:ty, $py_func:ty) => {
+        /// Container structure for adsorption isotherms in 1D pores.
         #[pyclass(name = "Adsorption1D", unsendable)]
         pub struct PyAdsorption1D(Adsorption1D<SIUnit, $func>);
 
+        /// Container structure for adsorption isotherms in 3D pores.
         #[pyclass(name = "Adsorption3D", unsendable)]
         pub struct PyAdsorption3D(Adsorption3D<SIUnit, $func>);
 
@@ -44,7 +46,7 @@ macro_rules! impl_adsorption_isotherm {
             ///
             /// Parameters
             /// ----------
-            /// functional : $func
+            /// functional : HelmholtzEnergyFunctional
             ///     The Helmholtz energy functional.
             /// temperature : SINumber
             ///     The temperature.
@@ -52,16 +54,16 @@ macro_rules! impl_adsorption_isotherm {
             ///     The pressures for which the profiles are calculated. Either
             ///     a tuple containing the minimum pressure, the maximum pressure,
             ///     and the number of points, or an array containing specific values.
-            /// pore : $py_pore
+            /// pore : Pore
             ///     The pore parameters.
-            /// molefracs: PyArray, optional
+            /// molefracs: numpy.ndarray[float], optional
             ///     For a mixture, the molefracs of the bulk system.
             /// solver: DFTSolver, optional
             ///     Custom solver options.
             ///
             /// Returns
             /// -------
-            /// $adsorption
+            /// Adsorption
             ///
             #[staticmethod]
             #[pyo3(text_signature = "(functional, temperature, pressure, pore, molefracs=None, solver=None)")]
@@ -89,7 +91,7 @@ macro_rules! impl_adsorption_isotherm {
             ///
             /// Parameters
             /// ----------
-            /// functional : $func
+            /// functional : HelmholtzEnergyFunctional
             ///     The Helmholtz energy functional.
             /// temperature : SINumber
             ///     The temperature.
@@ -97,16 +99,16 @@ macro_rules! impl_adsorption_isotherm {
             ///     The pressures for which the profiles are calculated. Either
             ///     a tuple containing the minimum pressure, the maximum pressure,
             ///     and the number of points, or an array containing specific values.
-            /// pore : $py_pore
+            /// pore : Pore
             ///     The pore parameters.
-            /// molefracs: PyArray, optional
+            /// molefracs: numpy.ndarray[float], optional
             ///     For a mixture, the molefracs of the bulk system.
             /// solver: DFTSolver, optional
             ///     Custom solver options.
             ///
             /// Returns
             /// -------
-            /// $adsorption
+            /// Adsorption
             ///
             #[staticmethod]
             #[pyo3(text_signature = "(functional, temperature, pressure, pore, molefracs=None, solver=None)")]
@@ -137,7 +139,7 @@ macro_rules! impl_adsorption_isotherm {
             ///
             /// Parameters
             /// ----------
-            /// functional : $func
+            /// functional : HelmholtzEnergyFunctional
             ///     The Helmholtz energy functional.
             /// temperature : SINumber
             ///     The temperature.
@@ -145,16 +147,16 @@ macro_rules! impl_adsorption_isotherm {
             ///     The pressures for which the profiles are calculated. Either
             ///     a tuple containing the minimum pressure, the maximum pressure,
             ///     and the number of points, or an array containing specific values.
-            /// pore : $py_pore
+            /// pore : Pore
             ///     The pore parameters.
-            /// molefracs: PyArray, optional
+            /// molefracs: numpy.ndarray[float], optional
             ///     For a mixture, the molefracs of the bulk system.
             /// solver: DFTSolver, optional
             ///     Custom solver options.
             ///
             /// Returns
             /// -------
-            /// $adsorption
+            /// Adsorption
             ///
             #[staticmethod]
             #[pyo3(text_signature = "(functional, temperature, pressure, pore, molefracs=None, solver=None)")]
@@ -180,7 +182,7 @@ macro_rules! impl_adsorption_isotherm {
             ///
             /// Parameters
             /// ----------
-            /// functional : $func
+            /// functional : HelmholtzEnergyFunctional
             ///     The Helmholtz energy functional.
             /// temperature : SINumber
             ///     The temperature.
@@ -188,9 +190,9 @@ macro_rules! impl_adsorption_isotherm {
             ///     A suitable lower limit for the pressure.
             /// p_max : SINumber
             ///     A suitable upper limit for the pressure.
-            /// pore : $py_pore
+            /// pore : Pore
             ///     The pore parameters.
-            /// molefracs: PyArray, optional
+            /// molefracs: numpy.ndarray[float], optional
             ///     For a mixture, the molefracs of the bulk system.
             /// solver: DFTSolver, optional
             ///     Custom solver options.
@@ -203,7 +205,7 @@ macro_rules! impl_adsorption_isotherm {
             ///
             /// Returns
             /// -------
-            /// $adsorption
+            /// Adsorption
             ///
             #[staticmethod]
             #[pyo3(text_signature = "(functional, temperature, p_min, p_max, pore, molefracs=None, solver=None, max_iter=None, tol=None, verbosity=None)")]

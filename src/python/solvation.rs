@@ -9,11 +9,11 @@ macro_rules! impl_solvation_profile {
         ///     The bulk state of the surrounding solvent.
         /// n_grid : [int, int, int]
         ///     The number of grid points in x-, y- and z-direction.
-        /// coordinates : SIArray2[3,N]
+        /// coordinates : SIArray2
         ///     The cartesian coordinates of all N interaction sites.
-        /// sigma : Array[N]
+        /// sigma : numpy.ndarray[float]
         ///     The size parameters of all N interaction sites in units of Angstrom.
-        /// epsilon_k : Array[N]
+        /// epsilon_k : numpy.ndarray[float]
         ///     The reduced energy parameters epsilon / kB of all N interaction sites in units of Kelvin.
         /// system_size : [SINumber, SINumber, SINumber], optional
         ///     The box length in x-, y- and z-direction (default: [40.0 * ANGSTROM, 40.0 * ANGSTROM, 40.0 * ANGSTROM]).
@@ -27,7 +27,7 @@ macro_rules! impl_solvation_profile {
         /// SolvationProfile
         ///
         #[pyclass(name = "SolvationProfile", unsendable)]
-        #[pyo3(text_signature = "(bulk, n_grid, coordinates, sigma, epsilon_k, system_size, solver, cutoff_radius, potential_cutoff)")]
+        #[pyo3(text_signature = "(bulk, n_grid, coordinates, sigma, epsilon_k, system_size=None, cutoff_radius=None, potential_cutoff=None)")]
         pub struct PySolvationProfile(SolvationProfile<SIUnit, $func>);
 
         impl_3d_profile!(PySolvationProfile, get_x, get_y, get_z);
@@ -103,10 +103,7 @@ macro_rules! impl_pair_correlation {
                 let profile = PairCorrelation::new(&bulk.0, n_grid, width.into())?;
                 Ok(PyPairCorrelation(profile))
             }
-        }
 
-        #[pymethods]
-        impl PyPairCorrelation {
             #[getter]
             fn get_pair_correlation_function<'py>(
                 &self,

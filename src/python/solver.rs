@@ -1,8 +1,7 @@
 use crate::DFTSolver;
 use pyo3::prelude::*;
-use std::fmt;
 
-/// Empty solver.
+/// Settings for the DFT solver.
 ///
 /// Parameters
 /// ----------
@@ -11,7 +10,7 @@ use std::fmt;
 ///
 /// Returns
 /// -------
-/// DFTSolver
+/// empty solver: DFTSolver
 #[pyclass(name = "DFTSolver", unsendable)]
 #[derive(Clone)]
 #[pyo3(text_signature = "(output=None)")]
@@ -35,8 +34,7 @@ impl PyDFTSolver {
     /// Returns
     /// -------
     /// DFTSolver
-    #[staticmethod]
-    #[pyo3(text_signature = "()")]
+    #[classattr]
     fn default() -> Self {
         Self(DFTSolver::default())
     }
@@ -57,7 +55,7 @@ impl PyDFTSolver {
     /// Returns
     /// -------
     /// DFTSolver
-    #[pyo3(text_signature = "(log=None, max_iter=None, tol=None, beta=None)")]
+    #[pyo3(text_signature = "($self, log=None, max_iter=None, tol=None, beta=None)")]
     fn picard_iteration(
         &self,
         max_rel: Option<f64>,
@@ -102,7 +100,7 @@ impl PyDFTSolver {
     /// Returns
     /// -------
     /// DFTSolver
-    #[pyo3(text_signature = "(mmax=None, log=None, max_iter=None, tol=None, beta=None)")]
+    #[pyo3(text_signature = "($self, mmax=None, log=None, max_iter=None, tol=None, beta=None)")]
     fn anderson_mixing(
         &self,
         mmax: Option<usize>,
@@ -134,15 +132,9 @@ impl PyDFTSolver {
     }
 }
 
-impl fmt::Display for PyDFTSolver {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(formatter)
-    }
-}
-
 #[pyproto]
 impl pyo3::class::basic::PyObjectProtocol for PyDFTSolver {
     fn __repr__(&self) -> PyResult<String> {
-        Ok(self.to_string())
+        Ok(self.0.to_string())
     }
 }
