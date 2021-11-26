@@ -33,13 +33,21 @@ pub enum FMTVersion {
 }
 
 /// The [FunctionalContribution] for the hard sphere functional.
-#[derive(Clone)]
-pub struct FMTContribution<P: FMTProperties> {
+pub struct FMTContribution<P> {
     pub properties: Rc<P>,
     version: FMTVersion,
 }
 
-impl<P: FMTProperties> FMTContribution<P> {
+impl<P> Clone for FMTContribution<P> {
+    fn clone(&self) -> Self {
+        Self {
+            properties: self.properties.clone(),
+            version: self.version,
+        }
+    }
+}
+
+impl<P> FMTContribution<P> {
     pub fn new(properties: &Rc<P>, version: FMTVersion) -> Self {
         Self {
             properties: properties.clone(),
