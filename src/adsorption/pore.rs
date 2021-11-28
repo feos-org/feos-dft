@@ -151,6 +151,14 @@ where
         self.interfacial_tension = None;
         self
     }
+
+    pub fn update_specification(&self, specification: DFTSpecifications) -> Self {
+        let mut profile = self.clone();
+        profile.profile.specification = Rc::new(specification);
+        profile.grand_potential = None;
+        profile.interfacial_tension = None;
+        profile
+    }
 }
 
 impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecification<U, Ix1, F>

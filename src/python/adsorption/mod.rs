@@ -16,18 +16,18 @@ macro_rules! impl_adsorption {
         impl_adsorption_isotherm!($func, $py_func, PyAdsorption1D, PyPore1D, PyPoreProfile1D);
         impl_adsorption_isotherm!($func, $py_func, PyAdsorption3D, PyPore3D, PyPoreProfile3D);
 
-        fn parse_pressure_specification(pressure: &PyAny) -> PyResult<PressureSpecification<SIUnit>> {
-            if let Ok((p_min, p_max, points)) = pressure.extract::<(PySINumber, PySINumber, usize)>() {
-                Ok(PressureSpecification::Plim {
-                    p_min: p_min.into(),
-                    p_max: p_max.into(),
+        fn parse_quantity_specification(quantity: &PyAny) -> PyResult<QuantitySpecification<SIUnit>> {
+            if let Ok((q_min, q_max, points)) = quantity.extract::<(PySINumber, PySINumber, usize)>() {
+                Ok(QuantitySpecification::Qlim {
+                    q_min: q_min.into(),
+                    q_max: q_max.into(),
                     points,
                 })
-            } else if let Ok(pressure) = pressure.extract::<PySIArray1>() {
-                Ok(PressureSpecification::Pvec(pressure.into()))
+            } else if let Ok(quantity) = quantity.extract::<PySIArray1>() {
+                Ok(QuantitySpecification::Qvec(quantity.into()))
             } else {
                 Err(PyErr::new::<PyValueError, _>(format!(
-                    "`pressure` must be (p_min, p_max, points) or an SIArray1 containing specific values."
+                    "QuantitySpecification must be (q_min, q_max, points) or an SIArray1 containing specific values."
                 )))
             }
         }
@@ -77,7 +77,7 @@ macro_rules! impl_adsorption_isotherm {
                 Ok(Self(Adsorption::adsorption_isotherm(
                     &functional.0,
                     temperature.into(),
-                    &parse_pressure_specification(pressure)?,
+                    &parse_quantity_specification(pressure)?,
                     &pore.0,
                     molefracs.map(|x| x.to_owned_array()).as_ref(),
                     solver.map(|s| s.0).as_ref(),
@@ -122,7 +122,7 @@ macro_rules! impl_adsorption_isotherm {
                 Ok(Self(Adsorption::desorption_isotherm(
                     &functional.0,
                     temperature.into(),
-                    &parse_pressure_specification(pressure)?,
+                    &parse_quantity_specification(pressure)?,
                     &pore.0,
                     molefracs.map(|x| x.to_owned_array()).as_ref(),
                     solver.map(|s| s.0).as_ref(),
@@ -170,7 +170,7 @@ macro_rules! impl_adsorption_isotherm {
                 Ok(Self(Adsorption::equilibrium_isotherm(
                     &functional.0,
                     temperature.into(),
-                    &parse_pressure_specification(pressure)?,
+                    &parse_quantity_specification(pressure)?,
                     &pore.0,
                     molefracs.map(|x| x.to_owned_array()).as_ref(),
                     solver.map(|s| s.0).as_ref(),
@@ -231,6 +231,51 @@ macro_rules! impl_adsorption_isotherm {
                     (max_iter, tol, verbosity.map(|v| v.0)).into(),
                 )?))
             }
+
+            /// Calculate an isostere for the given temperature range.
+            /// The profiles are evaluated starting from the lowest temperature and initial pressure.
+            ///
+            /// Parameters
+            /// ----------
+            /// functional : $func
+            ///     The Helmholtz energy functional.
+            /// temperature : {(SINumber, SINumber, int), SIArray1}
+            ///     The temperatures for which the profiles are calculated. Either
+            ///     a tuple containing the minimum temperature, the maximum temperature,
+            ///     and the number of points, or an array containing specific values.
+            /// initial_pressure : SINumber
+            ///     The initial pressure.
+            /// pore : $py_pore
+            ///     The pore parameters.
+            /// molefracs: PyArray, optional
+            ///     For a mixture, the molefracs of the bulk system.
+            /// solver: DFTSolver, optional
+            ///     Custom solver options.
+            ///
+            /// Returns
+            /// -------
+            /// $adsorption
+            ///
+            #[staticmethod]
+            #[pyo3(text_signature = "(functional, temperature, initial_pressure, pore, molefracs=None, solver=None)")]
+            pub fn isostere(
+                functional: &$py_func,
+                temperature: &PyAny,
+                initial_pressure: PySINumber,
+                pore: &$py_pore,
+                molefracs: Option<&PyArray1<f64>>,
+                solver: Option<PyDFTSolver>,
+            ) -> PyResult<Self> {
+                Ok(Self(Adsorption::isostere(
+                    &functional.0,
+                    &parse_quantity_specification(temperature)?,
+                    initial_pressure.into(),
+                    &pore.0,
+                    molefracs.map(|x| x.to_owned_array()).as_ref(),
+                    solver.map(|s| s.0).as_ref(),
+            )?))
+            }
+
 
             #[getter]
             fn get_profiles(&self) -> Vec<$py_pore_profile> {

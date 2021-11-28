@@ -87,6 +87,18 @@ macro_rules! impl_pore {
 
         #[pymethods]
         impl PyPoreProfile1D {
+            /// Create a new pore profile with a given specification.
+            ///
+            /// Parameters
+            /// ----------
+            /// specification: DFTSpecification
+            ///
+            #[pyo3(text_signature = "(specification)")]
+            fn update_specification(&self, specification: PyDFTSpecification) -> Self {
+                Self(self.0.update_specification(specification.0),
+                )
+            }
+
             #[getter]
             fn get_grand_potential(&self) -> Option<PySINumber> {
                 self.0.grand_potential.map(PySINumber::from)
@@ -189,6 +201,17 @@ macro_rules! impl_pore {
 
         #[pymethods]
         impl PyPoreProfile3D {
+            /// Create a new pore profile with a given specification.
+            ///
+            /// Parameters
+            /// ----------
+            /// specification: DFTSpecification
+            ///
+            #[pyo3(text_signature = "(specification)")]
+            fn update_specification(&self, specification: PyDFTSpecification) -> Self {
+                Self(self.0.update_specification(specification.0),
+                )
+            }
             #[getter]
             fn get_grand_potential(&self) -> Option<PySINumber> {
                 self.0.grand_potential.map(PySINumber::from)

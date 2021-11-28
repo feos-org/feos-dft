@@ -1,4 +1,6 @@
 //! Adsorption profiles and isotherms.
+use crate::DFTSpecification;
+
 use super::functional::{HelmholtzEnergyFunctional, DFT};
 use super::profile::DFTSpecifications;
 use super::solver::DFTSolver;
@@ -376,6 +378,7 @@ where
         ))
     }
 
+    /// Calculate the isostere starting from the lowest temperature.
     pub fn isostere<S: PoreSpecification<U, D, F>>(
         &self,
         functional: &Rc<DFT<F>>,
@@ -388,6 +391,7 @@ where
         let temperature = temperature.to_vec()?;
         let moles =
             functional.validate_moles(molefracs.map(|x| x * U::reference_moles()).as_ref())?;
+
         let mut profiles: Vec<EosResult<PoreProfile<U, D, F>>> =
             Vec::with_capacity(temperature.len());
 
@@ -405,28 +409,26 @@ where
         }
 
         // Initial PoreProfile for given mu,V,T
-        let initial_profile = pore.initialize(&initial_bulk, None, None)?.solve(solver)?;
+        let initial_profile = pore.initialize(&initial_bulk, None, None)?.solve(solver);
 
-        let specification = DFTSpecifications::moles_from_profile(&initial_profile.profile)?;
+        let specification = if let Ok(initial_profile) = &initial_profile {
+            DFTSpecifications::moles_from_profile(&initial_profile.profile)?
+        } else {
+            unimplemented!()
+        };
 
-        profiles.push(Ok(initial_profile.clone()));
-
-        let partial_density = initial_profile.profile.moles() / initial_profile.profile.volume();
+        profiles.push(initial_profile);
 
         for i in 1..temperature.len() {
-            let dummy_state = StateBuilder::new(functional)
+            let bulk = StateBuilder::new(functional)
                 .temperature(temperature.get(i))
-                .partial_density(&partial_density)
+                .partial_density(&initial_bulk.partial_density)
                 .build()?;
-
-            let mut p = pore
-                .initialize(&dummy_state, None, Some(specification.clone()))?
-                .solve(solver)?;
-            p.profile
-                .bulk
-                .update_chemical_potential(&p.profile.chemical_potential)?;
-
-            profiles.push(Ok(p));
+            let mut p = pore.initialize(&bulk, None, Some(specification.clone()))?;
+            if let Some(Ok(l)) = profiles.last() {
+                p.profile.density = l.profile.density.clone();
+            }
+            profiles.push(p.solve(solver));
         }
 
         Ok(Adsorption(profiles, functional.components()))
