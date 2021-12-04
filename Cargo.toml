@@ -10,7 +10,7 @@ crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 quantity = "0.3"
-feos-core = { git = "https://github.com/feos-org/feos-core", branch = "main" }
+feos-core = "0.1"
 num-dual = "0.3"
 ndarray = { version = "0.15", features = ["serde", "rayon"] }
 ndarray-linalg = "0.14"
