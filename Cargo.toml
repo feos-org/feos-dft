@@ -9,11 +9,10 @@ name = "feos_dft"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-quantity = "0.3"
-feos-core = "0.1"
-num-dual = "0.3"
+quantity = {path = "../../quantity", features = ["linalg"] }
+feos-core = {path = "../feos-core" }
+num-dual = {path = "../../num-dual" }
 ndarray = { version = "0.15", features = ["serde", "rayon"] }
-ndarray-linalg = "0.14"
 ndarray-stats = "0.5"
 rustdct = "0.6"
 rustfft = "6.0"
@@ -34,9 +33,3 @@ optional = true
 [features]
 default = []
 python = ["pyo3", "numpy", "feos-core/python"]
-openblas-system = ["feos-core/openblas-system"]
-openblas-static = ["feos-core/openblas-static"]
-intel-mkl-system = ["feos-core/intel-mkl-system"]
-intel-mkl-static = ["feos-core/intel-mkl-static"]
-netlib-system = ["feos-core/netlib-system"]
-netlib-static = ["feos-core/netlib-static"]

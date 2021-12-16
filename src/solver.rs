@@ -1,6 +1,6 @@
 use feos_core::{EosError, EosResult};
 use ndarray::prelude::*;
-use ndarray_linalg::{Norm, SolveH};
+use num_dual::linalg::{norm, LU};
 use std::collections::VecDeque;
 use std::fmt;
 
@@ -190,7 +190,7 @@ impl SolverParameter {
             }
 
             // check for convergence
-            let res = resm.norm() / (resm.len() as f64).sqrt();
+            let res = norm(&resm) / (resm.len() as f64).sqrt();
             if output {
                 println!(
                     "Picard iteration {:3} | {:>4} | {:.6e} | {}",
@@ -257,7 +257,8 @@ impl SolverParameter {
             });
             alpha = Array::zeros(m + 1);
             alpha[m] = 1.0;
-            r.solveh_inplace(&mut alpha)?;
+            alpha = LU::new(r)?.solve(&alpha);
+            // r.solveh_inplace(&mut alpha)?;
 
             // update solution
             x.fill(0.0);
@@ -272,7 +273,7 @@ impl SolverParameter {
 
             // check for convergence
             let resv = &resm[m - 1];
-            let res = resv.norm() / (resv.len() as f64).sqrt();
+            let res = norm(resv) / (resv.len() as f64).sqrt();
             if output {
                 println!(
                     "Anderson mixing {:3}  | {:>4} | {:.6e} ",
