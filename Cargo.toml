@@ -9,15 +9,15 @@ name = "feos_dft"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-quantity = {path = "../../quantity", features = ["linalg"] }
+quantity = { version = "0.4", features = ["linalg"] }
 feos-core = {path = "../feos-core" }
-num-dual = {path = "../../num-dual" }
+num-dual = "0.4"
 ndarray = { version = "0.15", features = ["serde", "rayon"] }
 ndarray-stats = "0.5"
 rustdct = "0.6"
 rustfft = "6.0"
 log = "0.4"
-special-fun = "0.2"
+#special-fun = "0.2"
 ang = "0.5"
 num-traits = "0.2"
 numpy = { version = "0.14", optional = true }
