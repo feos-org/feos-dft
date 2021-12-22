@@ -4,7 +4,6 @@ use ndarray::*;
 use num_dual::*;
 use rustdct::{DctNum, DctPlanner, TransformType2And3};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
-use special_fun::FloatSpecial;
 use std::f64::consts::PI;
 use std::ops::{DivAssign, SubAssign};
 use std::rc::Rc;
@@ -250,14 +249,14 @@ impl<T: DualNum<f64> + DctNum + ScalarOperand> PolarTransform<T> {
 
         let mut j = Array1::from_shape_fn(2 * points, |i| {
             Complex::from(T::from(
-                (gamma * x0 * (alpha * ((i + 1) as f64 - points as f64)).exp()).besselj(1.0)
+                (gamma * x0 * (alpha * ((i + 1) as f64 - points as f64)).exp()).bessel_j1()
                     / ((2 * points) as f64),
             ))
         });
         ifft.process(j.as_slice_mut().unwrap());
         let mut jv = Array1::from_shape_fn(2 * points, |i| {
             Complex::from(T::from(
-                (gamma * x0 * (alpha * ((i + 1) as f64 - points as f64)).exp()).besselj(2.0)
+                (gamma * x0 * (alpha * ((i + 1) as f64 - points as f64)).exp()).bessel_j2()
                     / ((2 * points) as f64),
             ))
         });
