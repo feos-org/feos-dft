@@ -1,0 +1,13 @@
+[package]
+name = "feos_dft"
+version = "0.1.0"
+authors = ["Philipp Rehner <prehner@ethz.ch"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+feos-dft = { path = "..", features = ["python"] }
+pyo3 = { version = "0.15", features = ["extension-module", "abi3", "abi3-py36"] }
+

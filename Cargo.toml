@@ -1,34 +1,36 @@
 [package]
 name = "feos-dft"
 version = "0.1.0"
-authors = ["Philipp Rehner <rehner@itt.uni-stuttgart.de>"]
+authors = ["Philipp Rehner <prehner@ethz.ch>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Generic classical DFT implementations for the `feos` project."
+homepage = "https://github.com/feos-org"
+readme = "README.md"
+repository = "https://github.com/feos-org/feos-dft"
+keywords = ["physics", "thermodynamics", "interfaces", "adsorption"]
+categories = ["science"]
+exclude = ["/.github/*", "*.ipynb"]
 
-[lib]
-name = "feos_dft"
-crate-type = ["rlib", "cdylib"]
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "./docs-header.html" ]
 
 [dependencies]
 quantity = { version = "0.4", features = ["linalg"] }
-feos-core = {path = "../feos-core" }
+feos-core = "0.1"
 num-dual = "0.4"
 ndarray = { version = "0.15", features = ["serde", "rayon"] }
 ndarray-stats = "0.5"
 rustdct = "0.6"
 rustfft = "6.0"
 log = "0.4"
-#special-fun = "0.2"
 ang = "0.5"
 num-traits = "0.2"
-numpy = { version = "0.14", optional = true }
 libc = "0.2"
 gauss-quad = "0.1"
 petgraph = "0.6"
-
-[dependencies.pyo3]
-version = "0.14"
-features = ["extension-module", "abi3", "abi3-py36"]
-optional = true
+numpy = { version = "0.15", optional = true }
+pyo3 = { version = "0.15", optional = true }
 
 [features]
 default = []
