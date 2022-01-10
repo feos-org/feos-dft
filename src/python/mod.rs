@@ -10,9 +10,9 @@ mod solvation;
 mod solver;
 
 pub use adsorption::{PyExternalPotential, PyGeometry};
+pub use fundamental_measure_theory::PyFMTVersion;
 use fundamental_measure_theory::*;
 pub use solver::PyDFTSolver;
-pub use fundamental_measure_theory::PyFMTVersion;
 
 #[pymodule]
 pub fn feos_dft(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -36,6 +36,11 @@ pub fn feos_dft(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     py.run(
         "\
 import sys
+quantity.SINumber.__module__ = 'feos_dft.si'
+quantity.SIArray1.__module__ = 'feos_dft.si'
+quantity.SIArray2.__module__ = 'feos_dft.si'
+quantity.SIArray3.__module__ = 'feos_dft.si'
+quantity.SIArray4.__module__ = 'feos_dft.si'
 sys.modules['feos_dft.si'] = quantity
     ",
         None,
