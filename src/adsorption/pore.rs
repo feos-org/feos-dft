@@ -89,6 +89,9 @@ pub trait PoreSpecification<U, D: Dimension, F> {
         bulk: &State<U, DFT<F>>,
         external_potential: Option<&Array<f64, D::Larger>>,
     ) -> EosResult<PoreProfile<U, D, F>>;
+
+    /// Return the number of spatial dimensions of the pore.
+    fn dimension(&self) -> i32;
 }
 
 /// Density profile and properties of a confined system in arbitrary dimensions.
@@ -200,6 +203,10 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecificati
             interfacial_tension: None,
         })
     }
+
+    fn dimension(&self) -> i32 {
+        self.geometry.dimension()
+    }
 }
 
 impl<U: EosUnit, F: HelmholtzEnergyFunctional, P: FluidParameters> PoreSpecification<U, Ix3, F>
@@ -255,6 +262,10 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional, P: FluidParameters> PoreSpecifica
             grand_potential: None,
             interfacial_tension: None,
         })
+    }
+
+    fn dimension(&self) -> i32 {
+        3
     }
 }
 

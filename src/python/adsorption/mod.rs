@@ -236,7 +236,7 @@ macro_rules! impl_adsorption_isotherm {
             #[getter]
             fn get_profiles(&self) -> Vec<$py_pore_profile> {
                 self.0
-                    .0
+                    .profiles
                     .iter()
                     .filter_map(|p| {
                         p.as_ref()

@@ -73,7 +73,8 @@ pub enum AxisGeometry {
 }
 
 impl AxisGeometry {
-    fn dimension(&self) -> i32 {
+    /// Return the number of spatial dimensions for this geometry.
+    pub fn dimension(&self) -> i32 {
         match self {
             Self::Cartesian => 1,
             Self::Polar => 2,

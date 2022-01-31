@@ -100,7 +100,11 @@ where
 }
 
 /// Container structure for the calculation of adsorption isotherms.
-pub struct Adsorption<U, D: Dimension, F>(pub Vec<EosResult<PoreProfile<U, D, F>>>, usize);
+pub struct Adsorption<U, D: Dimension, F> {
+    components: usize,
+    dimension: i32,
+    pub profiles: Vec<EosResult<PoreProfile<U, D, F>>>,
+}
 
 /// Container structure for adsorption isotherms in 1D pores.
 pub type Adsorption1D<U, F> = Adsorption<U, Ix1, F>;
@@ -112,6 +116,18 @@ where
     QuantityScalar<U>: std::fmt::Display,
     D::Larger: Dimension<Smaller = D>,
 {
+    fn new<S: PoreSpecification<U, D, F>>(
+        functional: &Rc<DFT<F>>,
+        pore: &S,
+        profiles: Vec<EosResult<PoreProfile<U, D, F>>>,
+    ) -> Self {
+        Self {
+            components: functional.components(),
+            dimension: pore.dimension(),
+            profiles,
+        }
+    }
+
     /// Calculate an adsorption isotherm (starting at low pressure)
     pub fn adsorption_isotherm<S: PoreSpecification<U, D, F>>(
         functional: &Rc<DFT<F>>,
@@ -138,9 +154,10 @@ where
         let pressure =
             QuantityArray1::from_shape_fn(pressure.len(), |i| pressure.get(pressure.len() - i - 1));
         let isotherm = Self::isotherm(functional, temperature, &pressure, pore, molefracs, solver)?;
-        Ok(Adsorption(
-            isotherm.0.into_iter().rev().collect(),
-            functional.components(),
+        Ok(Adsorption::new(
+            functional,
+            pore,
+            isotherm.profiles.into_iter().rev().collect(),
         ))
     }
 
@@ -174,7 +191,7 @@ where
                 molefracs,
                 solver,
             )?
-            .0;
+            .profiles;
             let desorption = Self::isotherm(
                 functional,
                 temperature,
@@ -183,14 +200,15 @@ where
                 molefracs,
                 solver,
             )?
-            .0;
-            Ok(Adsorption(
-                adsorption
+            .profiles;
+            Ok(Adsorption {
+                profiles: adsorption
                     .into_iter()
                     .chain(desorption.into_iter().rev())
                     .collect(),
-                functional.components(),
-            ))
+                components: functional.components(),
+                dimension: pore.dimension(),
+            })
         } else {
             let adsorption = Self::adsorption_isotherm(
                 functional,
@@ -210,16 +228,16 @@ where
             )?;
             let omega_a = adsorption.grand_potential();
             let omega_d = desorption.grand_potential();
-            let is_ads = Array1::from_shape_fn(adsorption.0.len(), |i| {
+            let is_ads = Array1::from_shape_fn(adsorption.profiles.len(), |i| {
                 omega_d.get(i).is_nan() || omega_a.get(i) < omega_d.get(i)
             });
             let profiles = is_ads
                 .into_iter()
-                .zip(adsorption.0.into_iter())
-                .zip(desorption.0.into_iter())
+                .zip(adsorption.profiles.into_iter())
+                .zip(desorption.profiles.into_iter())
                 .map(|((is_ads, a), d)| if is_ads { a } else { d })
                 .collect();
-            Ok(Adsorption(profiles, functional.components()))
+            Ok(Adsorption::new(functional, pore, profiles))
         }
     }
 
@@ -269,7 +287,7 @@ where
             profiles.push(p.solve(solver).or_else(|_| p2.solve(solver)));
         }
 
-        Ok(Adsorption(profiles, functional.components()))
+        Ok(Adsorption::new(functional, pore, profiles))
     }
 
     /// Calculate the phase transition from an empty to a filled pore.
@@ -357,9 +375,10 @@ where
             if delta_g.to_reduced(U::reference_molar_energy())?.abs()
                 < options.tol.unwrap_or(TOL_ADSORPTION_EQUILIBRIUM)
             {
-                return Ok(Adsorption(
+                return Ok(Adsorption::new(
+                    functional,
+                    pore,
                     vec![Ok(vapor), Ok(liquid)],
-                    functional.components(),
                 ));
             }
             g += delta_g;
@@ -373,7 +392,7 @@ where
     }
 
     pub fn pressure(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.0.len(), |i| match &self.0[i] {
+        QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
                     && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
@@ -393,7 +412,7 @@ where
     }
 
     pub fn molar_gibbs_energy(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.0.len(), |i| match &self.0[i] {
+        QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
                     && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
@@ -413,23 +432,31 @@ where
     }
 
     pub fn adsorption(&self) -> QuantityArray2<U> {
-        QuantityArray2::from_shape_fn((self.1, self.0.len()), |(j, i)| match &self.0[i] {
+        QuantityArray2::from_shape_fn((self.components, self.profiles.len()), |(j, i)| match &self
+            .profiles[i]
+        {
             Ok(p) => p.profile.moles().get(j),
-            Err(_) => f64::NAN * U::reference_moles() / U::reference_length().powi(2),
+            Err(_) => {
+                f64::NAN * U::reference_density() * U::reference_length().powi(self.dimension)
+            }
         })
     }
 
     pub fn total_adsorption(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.0.len(), |i| match &self.0[i] {
+        QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => p.profile.total_moles(),
-            Err(_) => f64::NAN * U::reference_moles() / U::reference_length().powi(2),
+            Err(_) => {
+                f64::NAN * U::reference_density() * U::reference_length().powi(self.dimension)
+            }
         })
     }
 
     pub fn grand_potential(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.0.len(), |i| match &self.0[i] {
+        QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => p.grand_potential.unwrap(),
-            Err(_) => f64::NAN * U::reference_surface_tension(),
+            Err(_) => {
+                f64::NAN * U::reference_pressure() * U::reference_length().powi(self.dimension)
+            }
         })
     }
 }
