@@ -1,6 +1,6 @@
 [package]
 name = "feos-dft"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Philipp Rehner <prehner@ethz.ch>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -21,7 +21,7 @@ feos-core = "0.1"
 num-dual = "0.4"
 ndarray = { version = "0.15", features = ["serde", "rayon"] }
 ndarray-stats = "0.5"
-rustdct = "0.6"
+rustdct = "0.7"
 rustfft = "6.0"
 log = "0.4"
 ang = "0.5"

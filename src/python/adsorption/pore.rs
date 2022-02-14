@@ -8,7 +8,8 @@ macro_rules! impl_pore {
         /// geometry : Geometry
         ///     The pore geometry.
         /// pore_size : SINumber
-        ///     The width of the slit pore.
+        ///     The width of the slit pore in cartesian coordinates,
+        ///     or the pore radius in spherical and cylindircal coordinates.
         /// potential : ExternalPotential
         ///     The potential used to model wall-fluid interactions.
         /// n_grid : int, optional
