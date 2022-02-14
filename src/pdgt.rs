@@ -169,11 +169,14 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         }
         delta_omega += &self
             .ideal_chain_contribution
-            .helmholtz_energy_density::<_, Ix1>(
-                vle.vapor().temperature,
-                &density,
-                Contributions::Total,
-            )?;
+            .helmholtz_energy_density::<_, Ix1>(vle.vapor().temperature, &density)?;
+
+        let t = vle
+            .vapor()
+            .temperature
+            .to_reduced(U::reference_temperature())?;
+        let rho = density.to_reduced(U::reference_density())?;
+        delta_omega += &(self.ideal_gas_contribution::<Ix1>(t, &rho) * U::reference_pressure());
 
         // calculate excess grand potential density
         let mu = vle.vapor().chemical_potential(Contributions::Total);
