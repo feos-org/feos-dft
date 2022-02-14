@@ -19,9 +19,13 @@ use std::rc::Rc;
 /// Wrapper struct for the [HelmholtzEnergyFunctional] trait.
 #[derive(Clone)]
 pub struct DFT<T> {
+    /// Helmholtz energy functional
     pub functional: T,
+    /// map segment -> component
     pub component_index: Array1<usize>,
+    /// chain lengths of individual components
     pub m: Array1<f64>,
+    /// ideal chain contribution
     pub ideal_chain_contribution: IdealChainContribution,
 }
 
@@ -169,6 +173,7 @@ pub trait HelmholtzEnergyFunctional: Sized {
 }
 
 impl<T: HelmholtzEnergyFunctional> DFT<T> {
+    /// Calculate the grand potential density $\omega$.
     pub fn grand_potential_density<U, D>(
         &self,
         temperature: QuantityScalar<U>,
@@ -199,12 +204,49 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         Ok(f * t * U::reference_pressure())
     }
 
+    pub(crate) fn ideal_gas_contribution<D>(
+        &self,
+        temperature: f64,
+        density: &Array<f64, D::Larger>,
+    ) -> Array<f64, D>
+    where
+        D: Dimension,
+        D::Larger: Dimension<Smaller = D>,
+    {
+        let n = self.components();
+        let ig = self.functional.ideal_gas();
+        let lambda = ig.de_broglie_wavelength(temperature, n);
+        let mut phi = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
+        for (i, rhoi) in density.outer_iter().enumerate() {
+            phi += &rhoi.mapv(|rhoi| (rhoi.ln() + lambda[i] - 1.0) * rhoi);
+        }
+        phi * temperature
+    }
+
+    fn ideal_gas_contribution_dual<D>(
+        &self,
+        temperature: Dual64,
+        density: &Array<f64, D::Larger>,
+    ) -> Array<Dual64, D>
+    where
+        D: Dimension,
+        D::Larger: Dimension<Smaller = D>,
+    {
+        let n = self.components();
+        let ig = self.functional.ideal_gas();
+        let lambda = ig.de_broglie_wavelength(temperature, n);
+        let mut phi = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
+        for (i, rhoi) in density.outer_iter().enumerate() {
+            phi += &rhoi.mapv(|rhoi| (lambda[i] + rhoi.ln() - 1.0) * rhoi);
+        }
+        phi * temperature
+    }
+
     fn intrinsic_helmholtz_energy_density<D, N>(
         &self,
         temperature: N,
         density: &Array<f64, D::Larger>,
         convolver: &Rc<dyn Convolver<N, D>>,
-        contributions: Contributions,
     ) -> EosResult<Array<N, D>>
     where
         N: DualNum<f64> + ScalarOperand,
@@ -217,7 +259,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         let functional_contributions = self.functional.contributions();
         let mut helmholtz_energy_density: Array<N, D> = self
             .ideal_chain_contribution
-            .calculate_helmholtz_energy_density(&density.mapv(N::from), contributions)?;
+            .calculate_helmholtz_energy_density(&density.mapv(N::from))?;
         for (c, wd) in functional_contributions.iter().zip(weighted_densities) {
             let nwd = wd.shape()[0];
             let ngrid = wd.len() / nwd;
@@ -233,6 +275,9 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         Ok(helmholtz_energy_density * temperature)
     }
 
+    /// Calculate the entropy density $s$.
+    ///
+    /// Untested with heterosegmented functionals.
     pub fn entropy_density<D>(
         &self,
         temperature: f64,
@@ -245,21 +290,26 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         let temperature_dual = Dual64::from(temperature).derive();
-        let helmholtz_energy_density = self.intrinsic_helmholtz_energy_density(
-            temperature_dual,
-            density,
-            convolver,
-            contributions,
-        )?;
+        let mut helmholtz_energy_density =
+            self.intrinsic_helmholtz_energy_density(temperature_dual, density, convolver)?;
+        match contributions {
+            Contributions::Total => {
+                helmholtz_energy_density += &self.ideal_gas_contribution_dual::<D>(temperature_dual, density);
+            },
+            Contributions::ResidualP|Contributions::IdealGas => panic!("Entropy density can only be calculated for Contributions::Residual or Contributions::Total"),
+            Contributions::Residual => (),
+        }
         Ok(helmholtz_energy_density.mapv(|f| -f.eps[0]))
     }
 
+    /// Calculate the individual contributions to the entropy density.
+    ///
+    /// Untested with heterosegmented functionals.
     pub fn entropy_density_contributions<D>(
         &self,
         temperature: f64,
         density: &Array<f64, D::Larger>,
         convolver: &Rc<dyn Convolver<Dual64, D>>,
-        contributions: Contributions,
     ) -> EosResult<Vec<Array<f64, D>>>
     where
         D: Dimension,
@@ -274,7 +324,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
             Vec::with_capacity(functional_contributions.len() + 1);
         helmholtz_energy_density.push(
             self.ideal_chain_contribution
-                .calculate_helmholtz_energy_density(&density.mapv(Dual64::from), contributions)?,
+                .calculate_helmholtz_energy_density(&density.mapv(Dual64::from))?,
         );
 
         for (c, wd) in functional_contributions.iter().zip(weighted_densities) {
@@ -295,6 +345,9 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
             .collect())
     }
 
+    /// Calculate the internal energy density $u$.
+    ///
+    /// Untested with heterosegmented functionals.
     pub fn internal_energy_density<D>(
         &self,
         temperature: f64,
@@ -308,18 +361,22 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         let temperature_dual = Dual64::from(temperature).derive();
-        let helmholtz_energy_density_dual = self.intrinsic_helmholtz_energy_density(
-            temperature_dual,
-            density,
-            convolver,
-            contributions,
-        )?;
+        let mut helmholtz_energy_density_dual =
+            self.intrinsic_helmholtz_energy_density(temperature_dual, density, convolver)?;
+        match contributions {
+                Contributions::Total => {
+                    helmholtz_energy_density_dual += &self.ideal_gas_contribution_dual::<D>(temperature_dual, density);
+                },
+                Contributions::ResidualP|Contributions::IdealGas => panic!("Internal energy density can only be calculated for Contributions::Residual or Contributions::Total"),
+                Contributions::Residual => (),
+            }
         let helmholtz_energy_density = helmholtz_energy_density_dual
             .mapv(|f| f.re - f.eps[0] * temperature)
             + (external_potential * density).sum_axis(Axis(0)) * temperature;
         Ok(helmholtz_energy_density)
     }
 
+    /// Calculate the (residual) functional derivative $\frac{\delta\mathcal{F}}{\delta\rho_i(\mathbf{r})}$.
     #[allow(clippy::type_complexity)]
     pub fn functional_derivative<D>(
         &self,
@@ -355,8 +412,8 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         ))
     }
 
-    // iSAFT correction to the functional derivative
-    pub fn isaft_integrals<D>(
+    /// Calculate the bond integrals $I_{\alpha\alpha'}(\mathbf{r})$
+    pub fn bond_integrals<D>(
         &self,
         temperature: f64,
         functional_derivative: &Array<f64, D::Larger>,
@@ -368,13 +425,13 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
     {
         // calculate weight functions
         let bond_lengths = self.functional.bond_lengths(temperature).into_edge_type();
-        let mut isaft_weight_functions = bond_lengths.map(
+        let mut bond_weight_functions = bond_lengths.map(
             |_, _| (),
             |_, &l| WeightFunction::new_scaled(arr1(&[l]), WeightFunctionShape::Delta),
         );
         for n in bond_lengths.node_indices() {
             for e in bond_lengths.edges(n) {
-                isaft_weight_functions.add_edge(
+                bond_weight_functions.add_edge(
                     e.target(),
                     e.source(),
                     WeightFunction::new_scaled(arr1(&[*e.weight()]), WeightFunctionShape::Delta),
@@ -384,7 +441,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
 
         let expdfdrho = functional_derivative.mapv(|x| (-x).exp());
         let mut i_graph: Graph<_, Option<Array<f64, D>>, Directed> =
-            isaft_weight_functions.map(|_, _| (), |_, _| None);
+            bond_weight_functions.map(|_, _| (), |_, _| None);
 
         let bonds = i_graph.edge_count();
         let mut calc = 0;
@@ -414,9 +471,8 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
                                 .to_owned(),
                             |acc: Array<f64, D>, e| acc * e.weight().as_ref().unwrap(),
                         );
-                        i1 = Some(
-                            convolver.convolve(i0.clone(), &isaft_weight_functions[edge.id()]),
-                        );
+                        i1 =
+                            Some(convolver.convolve(i0.clone(), &bond_weight_functions[edge.id()]));
                         break 'nodes;
                     }
                 }

@@ -212,8 +212,8 @@ where
 
         // intitialize density
         let t = bulk.temperature.to_reduced(U::reference_temperature())?;
-        let isaft = dft
-            .isaft_integrals(t, &external_potential, &convolver)
+        let bonds = dft
+            .bond_integrals(t, &external_potential, &convolver)
             .mapv(f64::abs)
             * (-&external_potential).mapv(f64::exp);
         let mut density = Array::zeros(external_potential.raw_dim());
@@ -221,7 +221,7 @@ where
         for (s, &c) in dft.component_index.iter().enumerate() {
             density
                 .index_axis_mut(Axis_nd(0), s)
-                .assign(&(isaft.index_axis(Axis_nd(0), s).map(|is| is.min(1.0)) * bulk_density[c]));
+                .assign(&(bonds.index_axis(Axis_nd(0), s).map(|is| is.min(1.0)) * bulk_density[c]));
         }
 
         Ok(Self {
@@ -348,10 +348,16 @@ where
         // Read from profile
         let temperature = self.temperature.to_reduced(U::reference_temperature())?;
         let density = self.density.to_reduced(U::reference_density())?;
+        let lambda_de_broglie = self
+            .dft
+            .functional
+            .ideal_gas()
+            .de_broglie_wavelength(temperature, self.bulk.eos.components());
         let mu_comp = self
             .chemical_potential
             .to_reduced(U::reference_molar_energy())?
-            / temperature;
+            / temperature
+            - lambda_de_broglie;
         let chemical_potential = self.dft.component_index.mapv(|i| mu_comp[i]);
         let mut bulk = self.bulk.clone();
 
@@ -383,11 +389,18 @@ where
         log: bool,
     ) -> EosResult<()> {
         // Update bulk state
+        let lambda_de_broglie = self
+            .dft
+            .functional
+            .ideal_gas()
+            .de_broglie_wavelength(temperature, bulk.eos.components());
         let mut mu_comp = Array::zeros(bulk.eos.components());
         for (s, &c) in self.dft.component_index.iter().enumerate() {
             mu_comp[c] = chemical_potential[s];
         }
-        bulk.update_chemical_potential(&(mu_comp * temperature * U::reference_molar_energy()))?;
+        bulk.update_chemical_potential(
+            &((mu_comp + lambda_de_broglie) * temperature * U::reference_molar_energy()),
+        )?;
 
         // calculate intrinsic functional derivative
         let (_, mut dfdrho) =
@@ -397,10 +410,10 @@ where
         // calculate total functional derivative
         dfdrho += &self.external_potential;
 
-        // calculate isaft integrals
-        let isaft = self
+        // calculate bond integrals
+        let bonds = self
             .dft
-            .isaft_integrals(temperature, &dfdrho, &self.convolver);
+            .bond_integrals(temperature, &dfdrho, &self.convolver);
 
         // Euler-Lagrange equation
         let m = &self.dft.m;
@@ -410,7 +423,7 @@ where
             .zip(chemical_potential.iter())
             .zip(m.iter())
             .zip(density.outer_iter())
-            .zip(isaft.outer_iter())
+            .zip(bonds.outer_iter())
             .for_each(|(((((mut res, df), &mu), &m), rho), is)| {
                 res.assign(
                     &(if log {
@@ -435,7 +448,7 @@ where
         let z: Array1<_> = dfdrho
             .outer_iter()
             .zip(m.iter())
-            .zip(isaft.outer_iter())
+            .zip(bonds.outer_iter())
             .map(|((df, &m), is)| self.integrate_reduced((-&df / m).mapv(f64::exp) * is))
             .collect();
         let mu_spec =
@@ -460,10 +473,16 @@ where
         // Read from profile
         let temperature = self.temperature.to_reduced(U::reference_temperature())?;
         let mut density = self.density.to_reduced(U::reference_density())?;
+        let lambda_de_broglie = self
+            .dft
+            .functional
+            .ideal_gas()
+            .de_broglie_wavelength(temperature, self.bulk.eos.components());
         let mut mu_comp = self
             .chemical_potential
             .to_reduced(U::reference_molar_energy())?
-            / temperature;
+            / temperature
+            - lambda_de_broglie;
         let mut chemical_potential = self.dft.component_index.mapv(|i| mu_comp[i]);
         let mut bulk = self.bulk.clone();
 

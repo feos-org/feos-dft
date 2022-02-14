@@ -1,4 +1,4 @@
-use feos_core::{Contributions, EosResult, EosUnit, HelmholtzEnergyDual, StateHD};
+use feos_core::{EosResult, EosUnit, HelmholtzEnergyDual, StateHD};
 use ndarray::*;
 use num_dual::DualNum;
 use quantity::{QuantityArray, QuantityScalar};
@@ -48,7 +48,6 @@ impl IdealChainContribution {
     pub fn calculate_helmholtz_energy_density<D, N>(
         &self,
         density: &Array<N, D::Larger>,
-        contributions: Contributions,
     ) -> EosResult<Array<N, D>>
     where
         D: Dimension,
@@ -56,14 +55,8 @@ impl IdealChainContribution {
         N: DualNum<f64>,
     {
         let mut phi = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
-        let m = match contributions {
-            Contributions::Total => self.m.clone(),
-            Contributions::Residual => self.m.clone() - 1.0,
-            Contributions::IdealGas => Array::ones(density.shape()[0]),
-            Contributions::ResidualP => unreachable!(),
-        };
         for (i, rhoi) in density.outer_iter().enumerate() {
-            phi = phi + rhoi.mapv(|rhoi| (rhoi.ln() - 1.0) * m[i] * rhoi);
+            phi += &rhoi.mapv(|rhoi| (rhoi.ln() - 1.0) * (self.m[i] - 1.0) * rhoi);
         }
         Ok(phi)
     }
@@ -72,7 +65,6 @@ impl IdealChainContribution {
         &self,
         temperature: QuantityScalar<U>,
         density: &QuantityArray<U, D::Larger>,
-        contributions: Contributions,
     ) -> EosResult<QuantityArray<U, D>>
     where
         D: Dimension,
@@ -80,10 +72,6 @@ impl IdealChainContribution {
     {
         let rho = density.to_reduced(U::reference_density())?;
         let t = temperature.to_reduced(U::reference_temperature())?;
-        Ok(
-            self.calculate_helmholtz_energy_density(&rho, contributions)?
-                * t
-                * U::reference_pressure(),
-        )
+        Ok(self.calculate_helmholtz_energy_density(&rho)? * t * U::reference_pressure())
     }
 }
