@@ -5,8 +5,6 @@ macro_rules! impl_pore {
         ///
         /// Parameters
         /// ----------
-        /// functional : HelmholtzEnergyFunctional
-        ///     The Helmholtz energy functional.
         /// geometry : Geometry
         ///     The pore geometry.
         /// pore_size : SINumber
@@ -23,8 +21,8 @@ macro_rules! impl_pore {
         /// Pore1D
         ///
         #[pyclass(name = "Pore1D", unsendable)]
-        #[pyo3(text_signature = "(functional, geometry, pore_size, potential, n_grid=None, potential_cutoff=None)")]
-        pub struct PyPore1D(Pore1D<SIUnit, $func>);
+        #[pyo3(text_signature = "(geometry, pore_size, potential, n_grid=None, potential_cutoff=None)")]
+        pub struct PyPore1D(Pore1D<SIUnit>);
 
         #[pyclass(name = "PoreProfile1D", unsendable)]
         pub struct PyPoreProfile1D(PoreProfile1D<SIUnit, $func>);
@@ -35,7 +33,6 @@ macro_rules! impl_pore {
         impl PyPore1D {
             #[new]
             fn new(
-                functional: &$py_func,
                 geometry: PyGeometry,
                 pore_size: PySINumber,
                 potential: PyExternalPotential,
@@ -43,7 +40,6 @@ macro_rules! impl_pore {
                 potential_cutoff: Option<f64>,
             ) -> Self {
                 Self(Pore1D::new(
-                    &functional.0,
                     geometry.0,
                     pore_size.into(),
                     potential.0,
@@ -96,8 +92,6 @@ macro_rules! impl_pore {
         ///
         /// Parameters
         /// ----------
-        /// functional : HelmholtzEnergyFunctional
-        ///     The Helmholtz energy functional.
         /// system_size : [SINumber; 3]
         ///     The size of the unit cell.
         /// n_grid : [int; 3]
@@ -118,8 +112,8 @@ macro_rules! impl_pore {
         /// Pore3D
         ///
         #[pyclass(name = "Pore3D", unsendable)]
-        #[pyo3(text_signature = "(functional, system_size, n_grid, coordinates, sigma_ss, epsilon_k_ss, potential_cutoff=None, cutoff_radius=None)")]
-        pub struct PyPore3D(Pore3D<SIUnit, $func>);
+        #[pyo3(text_signature = "(system_size, n_grid, coordinates, sigma_ss, epsilon_k_ss, potential_cutoff=None, cutoff_radius=None)")]
+        pub struct PyPore3D(Pore3D<SIUnit>);
 
         #[pyclass(name = "PoreProfile3D", unsendable)]
         pub struct PyPoreProfile3D(PoreProfile3D<SIUnit, $func>);
@@ -130,7 +124,6 @@ macro_rules! impl_pore {
         impl PyPore3D {
             #[new]
             fn new(
-                functional: &$py_func,
                 system_size: [PySINumber; 3],
                 n_grid: [usize; 3],
                 coordinates: &PySIArray2,
@@ -140,7 +133,6 @@ macro_rules! impl_pore {
                 cutoff_radius: Option<PySINumber>,
             ) -> Self {
                 Self(Pore3D::new(
-                    &functional.0,
                     [system_size[0].into(), system_size[1].into(), system_size[2].into()],
                     n_grid,
                     coordinates.clone().into(),

@@ -206,13 +206,13 @@ impl PyExternalPotential {
             coordinates: coordinates.clone().into(),
             sigma_ss: sigma_ss.to_owned_array(),
             epsilon_k_ss: epsilon_k_ss.to_owned_array(),
-            pore_center: pore_center,
+            pore_center,
             system_size: [
                 system_size[0].into(),
                 system_size[1].into(),
                 system_size[2].into(),
             ],
-            n_grid: n_grid,
+            n_grid,
         })
     }
 }

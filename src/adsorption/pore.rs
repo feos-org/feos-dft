@@ -10,14 +10,13 @@ use ndarray::Axis as Axis_nd;
 use ndarray::Zip;
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray2, QuantityScalar};
-use std::rc::Rc;
 
 const POTENTIAL_OFFSET: f64 = 2.0;
 const DEFAULT_GRID_POINTS: usize = 2048;
 
 /// Parameters required to specify a 1D pore.
-pub struct Pore1D<U, F> {
-    functional: Rc<DFT<F>>,
+pub struct Pore1D<U> {
+    // functional: Rc<DFT<F>>,
     geometry: AxisGeometry,
     pore_size: QuantityScalar<U>,
     potential: ExternalPotential<U>,
@@ -25,9 +24,8 @@ pub struct Pore1D<U, F> {
     potential_cutoff: Option<f64>,
 }
 
-impl<U: EosUnit, F: HelmholtzEnergyFunctional> Pore1D<U, F> {
+impl<U: EosUnit> Pore1D<U> {
     pub fn new(
-        functional: &Rc<DFT<F>>,
         geometry: AxisGeometry,
         pore_size: QuantityScalar<U>,
         potential: ExternalPotential<U>,
@@ -35,7 +33,6 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> Pore1D<U, F> {
         potential_cutoff: Option<f64>,
     ) -> Self {
         Self {
-            functional: functional.clone(),
             geometry,
             pore_size,
             potential,
@@ -46,8 +43,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> Pore1D<U, F> {
 }
 
 /// Parameters required to specify a 3D pore.
-pub struct Pore3D<U, F> {
-    functional: Rc<DFT<F>>,
+pub struct Pore3D<U> {
     system_size: [QuantityScalar<U>; 3],
     n_grid: [usize; 3],
     coordinates: QuantityArray2<U>,
@@ -57,9 +53,8 @@ pub struct Pore3D<U, F> {
     cutoff_radius: Option<QuantityScalar<U>>,
 }
 
-impl<U, F> Pore3D<U, F> {
+impl<U> Pore3D<U> {
     pub fn new(
-        functional: &Rc<DFT<F>>,
         system_size: [QuantityScalar<U>; 3],
         n_grid: [usize; 3],
         coordinates: QuantityArray2<U>,
@@ -69,7 +64,6 @@ impl<U, F> Pore3D<U, F> {
         cutoff_radius: Option<QuantityScalar<U>>,
     ) -> Self {
         Self {
-            functional: functional.clone(),
             system_size,
             n_grid,
             coordinates,
@@ -156,7 +150,7 @@ where
 }
 
 impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecification<U, Ix1, F>
-    for Pore1D<U, F>
+    for Pore1D<U>
 {
     fn initialize(
         &self,
@@ -169,7 +163,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecificati
         let axis = match self.geometry {
             AxisGeometry::Cartesian => {
                 let potential_offset =
-                    POTENTIAL_OFFSET * self.functional.functional.sigma_ff().max().unwrap();
+                    POTENTIAL_OFFSET * bulk.eos.functional.sigma_ff().max().unwrap();
                 Axis::new_cartesian(n_grid, 0.5 * self.pore_size, Some(potential_offset))?
             }
             AxisGeometry::Polar => Axis::new_polar(n_grid, self.pore_size)?,
@@ -183,7 +177,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecificati
                     self.pore_size,
                     bulk.temperature,
                     &self.potential,
-                    &self.functional.functional,
+                    &bulk.eos.functional,
                     &axis,
                     self.potential_cutoff,
                 )
@@ -209,8 +203,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecificati
     }
 }
 
-impl<U: EosUnit, F: HelmholtzEnergyFunctional, P: FluidParameters> PoreSpecification<U, Ix3, F>
-    for Pore3D<U, P>
+impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecification<U, Ix3, F>
+    for Pore3D<U>
 {
     fn initialize(
         &self,
@@ -238,7 +232,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional, P: FluidParameters> PoreSpecifica
         let external_potential = external_potential.map_or_else(
             || {
                 external_potential_3d(
-                    &self.functional.functional,
+                    &bulk.eos.functional,
                     [&x, &y, &z],
                     self.system_size,
                     coordinates,
