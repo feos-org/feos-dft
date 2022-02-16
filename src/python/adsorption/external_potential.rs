@@ -6,7 +6,7 @@ use quantity::python::{PySIArray2, PySINumber};
 use quantity::si::*;
 
 /// A collection of external potentials.
-#[pyclass(name = "ExternalPotential", unsendable)]
+#[pyclass(name = "ExternalPotential")]
 #[derive(Clone)]
 pub struct PyExternalPotential(pub ExternalPotential<SIUnit>);
 
