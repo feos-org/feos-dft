@@ -74,6 +74,12 @@ macro_rules! impl_pore {
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
                 )?))
             }
+
+            /// The pore volume using Helium at 298 K as reference.
+            #[getter]
+            fn get_pore_volume(&self) -> PyResult<PySINumber> {
+                Ok(self.0.pore_volume()?.into())
+            }
         }
 
         #[pymethods]
