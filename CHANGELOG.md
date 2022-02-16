@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - The pore volume using Helium at 298 K as reference is now directly accesible from `Pore1D` and `Pore3D`. [#12](https://github.com/feos-org/feos-core/pull/12)
 
+### Changed
+- Removed the `unsendable` tag from python classes wherever possible. [#13](https://github.com/feos-org/feos-core/pull/13)
+
 ## [0.1.1] - 2022-02-14
 ### Added
 - `HelmholtzEnergyFunctional`s can now overwrite the `ideal_gas` method to provide a non-default ideal gas contribution that is accounted for in the calculation of the entropy, the internal energy and other properties. [#10](https://github.com/feos-org/feos-core/pull/10)

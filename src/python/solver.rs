@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 /// Returns
 /// -------
 /// empty solver: DFTSolver
-#[pyclass(name = "DFTSolver", unsendable)]
+#[pyclass(name = "DFTSolver")]
 #[derive(Clone)]
 #[pyo3(text_signature = "(output=None)")]
 pub struct PyDFTSolver(pub DFTSolver);
