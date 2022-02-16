@@ -5,11 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.2] - 2022-02-16
 ### Added
-- The pore volume using Helium at 298 K as reference is now directly accesible from `Pore1D` and `Pore3D`. [#12](https://github.com/feos-org/feos-core/pull/12)
+- The pore volume using Helium at 298 K as reference is now directly accesible from `Pore1D` and `Pore3D`. [#13](https://github.com/feos-org/feos-core/pull/13)
 
 ### Changed
-- Removed the `unsendable` tag from python classes wherever possible. [#13](https://github.com/feos-org/feos-core/pull/13)
+- Removed the `unsendable` tag from python classes wherever possible. [#14](https://github.com/feos-org/feos-core/pull/14)
 
 ## [0.1.1] - 2022-02-14
 ### Added
