@@ -1,15 +1,17 @@
 use crate::adsorption::{ExternalPotential, FluidParameters};
 use crate::convolver::ConvolverFFT;
 use crate::functional::{HelmholtzEnergyFunctional, DFT};
+use crate::functional_contribution::FunctionalContribution;
 use crate::geometry::{Axis, AxisGeometry, Grid};
 use crate::profile::{DFTProfile, CUTOFF_RADIUS, MAX_POTENTIAL};
 use crate::solver::DFTSolver;
-use feos_core::{Contributions, EosResult, EosUnit, State};
+use feos_core::{Contributions, EosResult, EosUnit, State, StateBuilder};
 use ndarray::prelude::*;
 use ndarray::Axis as Axis_nd;
 use ndarray::Zip;
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray2, QuantityScalar};
+use std::rc::Rc;
 
 const POTENTIAL_OFFSET: f64 = 2.0;
 const DEFAULT_GRID_POINTS: usize = 2048;
@@ -76,9 +78,9 @@ impl<U> Pore3D<U> {
 }
 
 /// Trait for the generic implementation of adsorption applications.
-pub trait PoreSpecification<U, D: Dimension, F> {
+pub trait PoreSpecification<U: EosUnit, D: Dimension> {
     /// Initialize a new single pore.
-    fn initialize(
+    fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
         external_potential: Option<&Array<f64, D::Larger>>,
@@ -86,6 +88,26 @@ pub trait PoreSpecification<U, D: Dimension, F> {
 
     /// Return the number of spatial dimensions of the pore.
     fn dimension(&self) -> i32;
+
+    /// Return the pore volume using Helium at 298 K as reference.
+    fn pore_volume(&self) -> EosResult<QuantityScalar<U>>
+    where
+        D::Larger: Dimension<Smaller = D>,
+    {
+        let bulk = StateBuilder::new(&Rc::new(Helium::new()))
+            .temperature(298.0 * U::reference_temperature())
+            .volume(U::reference_volume())
+            .build()?;
+        let pore = self.initialize(&bulk, None)?;
+        let pot = pore
+            .profile
+            .external_potential
+            .index_axis(Axis(0), 0)
+            .mapv(|v| (-v).exp())
+            * U::reference_temperature()
+            / U::reference_temperature();
+        Ok(pore.profile.integrate(&pot))
+    }
 }
 
 /// Density profile and properties of a confined system in arbitrary dimensions.
@@ -149,10 +171,8 @@ where
     }
 }
 
-impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecification<U, Ix1, F>
-    for Pore1D<U>
-{
-    fn initialize(
+impl<U: EosUnit> PoreSpecification<U, Ix1> for Pore1D<U> {
+    fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
         external_potential: Option<&Array2<f64>>,
@@ -203,10 +223,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecificati
     }
 }
 
-impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> PoreSpecification<U, Ix3, F>
-    for Pore3D<U>
-{
-    fn initialize(
+impl<U: EosUnit> PoreSpecification<U, Ix3> for Pore3D<U> {
+    fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
         external_potential: Option<&Array4<f64>>,
@@ -419,4 +437,48 @@ fn calculate_distance2(
 
         rx.powi(2) + ry.powi(2) + rz.powi(2)
     })
+}
+
+const EPSILON_HE: f64 = 10.9;
+const SIGMA_HE: f64 = 2.64;
+
+struct Helium {
+    epsilon: Array1<f64>,
+    sigma: Array1<f64>,
+}
+
+impl Helium {
+    fn new() -> DFT<Self> {
+        let epsilon = arr1(&[EPSILON_HE]);
+        let sigma = arr1(&[SIGMA_HE]);
+        DFT::new_homosegmented(Self { epsilon, sigma }, &Array1::ones(1))
+    }
+}
+
+impl HelmholtzEnergyFunctional for Helium {
+    fn contributions(&self) -> &[Box<dyn FunctionalContribution>] {
+        &[]
+    }
+
+    fn subset(&self, _: &[usize]) -> DFT<Self> {
+        Self::new()
+    }
+
+    fn compute_max_density(&self, _: &Array1<f64>) -> f64 {
+        1.0
+    }
+}
+
+impl FluidParameters for Helium {
+    fn epsilon_k_ff(&self) -> Array1<f64> {
+        self.epsilon.clone()
+    }
+
+    fn sigma_ff(&self) -> &Array1<f64> {
+        &self.sigma
+    }
+
+    fn m(&self) -> Array1<f64> {
+        arr1(&[1.0])
+    }
 }

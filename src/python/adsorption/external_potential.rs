@@ -222,7 +222,7 @@ impl PyExternalPotential {
 /// Returns
 /// -------
 /// Geometry
-#[pyclass(name = "Geometry", unsendable)]
+#[pyclass(name = "Geometry")]
 #[derive(Clone)]
 pub struct PyGeometry(pub AxisGeometry);
 

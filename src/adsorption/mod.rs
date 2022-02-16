@@ -55,7 +55,7 @@ where
         })
     }
 
-    fn equilibrium<D: Dimension, F: HelmholtzEnergyFunctional>(
+    fn equilibrium<D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         equilibrium: &Adsorption<U, D, F>,
     ) -> EosResult<(QuantityArray1<U>, QuantityArray1<U>)>
@@ -111,12 +111,12 @@ pub type Adsorption1D<U, F> = Adsorption<U, Ix1, F>;
 /// Container structure for adsorption isotherms in 3D pores.
 pub type Adsorption3D<U, F> = Adsorption<U, Ix3, F>;
 
-impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional> Adsorption<U, D, F>
+impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters> Adsorption<U, D, F>
 where
     QuantityScalar<U>: std::fmt::Display,
     D::Larger: Dimension<Smaller = D>,
 {
-    fn new<S: PoreSpecification<U, D, F>>(
+    fn new<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         pore: &S,
         profiles: Vec<EosResult<PoreProfile<U, D, F>>>,
@@ -129,7 +129,7 @@ where
     }
 
     /// Calculate an adsorption isotherm (starting at low pressure)
-    pub fn adsorption_isotherm<S: PoreSpecification<U, D, F>>(
+    pub fn adsorption_isotherm<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         temperature: QuantityScalar<U>,
         pressure: &PressureSpecification<U>,
@@ -142,7 +142,7 @@ where
     }
 
     /// Calculate an desorption isotherm (starting at high pressure)
-    pub fn desorption_isotherm<S: PoreSpecification<U, D, F>>(
+    pub fn desorption_isotherm<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         temperature: QuantityScalar<U>,
         pressure: &PressureSpecification<U>,
@@ -162,7 +162,7 @@ where
     }
 
     /// Calculate an equilibrium isotherm
-    pub fn equilibrium_isotherm<S: PoreSpecification<U, D, F>>(
+    pub fn equilibrium_isotherm<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         temperature: QuantityScalar<U>,
         pressure: &PressureSpecification<U>,
@@ -241,7 +241,7 @@ where
         }
     }
 
-    fn isotherm<S: PoreSpecification<U, D, F>>(
+    fn isotherm<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         temperature: QuantityScalar<U>,
         pressure: &QuantityArray1<U>,
@@ -291,7 +291,7 @@ where
     }
 
     /// Calculate the phase transition from an empty to a filled pore.
-    pub fn phase_equilibrium<S: PoreSpecification<U, D, F>>(
+    pub fn phase_equilibrium<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
         temperature: QuantityScalar<U>,
         p_min: QuantityScalar<U>,
