@@ -1,6 +1,6 @@
 [package]
 name = "feos-dft"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Philipp Rehner <prehner@ethz.ch>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"

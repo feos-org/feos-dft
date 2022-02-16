@@ -184,7 +184,7 @@ impl PyExternalPotential {
     ///     The cartesian coordinates of the center of the pore
     /// system_size : [SINumber; 3]
     ///     The size of the unit cell.
-    /// n_grid : [int; 3]
+    /// n_grid : [int; 2]
     ///     The number of grid points in each direction.
     /// Returns
     /// -------
