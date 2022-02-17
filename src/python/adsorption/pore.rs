@@ -9,7 +9,7 @@ macro_rules! impl_pore {
         ///     The pore geometry.
         /// pore_size : SINumber
         ///     The width of the slit pore in cartesian coordinates,
-        ///     or the pore radius in spherical and cylindircal coordinates.
+        ///     or the pore radius in spherical and cylindrical coordinates.
         /// potential : ExternalPotential
         ///     The potential used to model wall-fluid interactions.
         /// n_grid : int, optional
@@ -174,6 +174,12 @@ macro_rules! impl_pore {
                     &bulk.0,
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
                 )?))
+            }
+
+            /// The pore volume using Helium at 298 K as reference.
+            #[getter]
+            fn get_pore_volume(&self) -> PyResult<PySINumber> {
+                Ok(self.0.pore_volume()?.into())
             }
         }
 

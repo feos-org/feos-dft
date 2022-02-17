@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2022-02-17
+### Fixed
+- The pore volume for `Pore3D` is now also accesible from Python. [#14](https://github.com/feos-org/feos-dft/pull/14)
+
 ## [0.1.2] - 2022-02-16
 ### Added
 - The pore volume using Helium at 298 K as reference is now directly accesible from `Pore1D` and `Pore3D`. [#13](https://github.com/feos-org/feos-dft/pull/13)
