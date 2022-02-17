@@ -1,6 +1,6 @@
 [package]
 name = "feos_dft"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Philipp Rehner <prehner@ethz.ch"]
 edition = "2018"
 
