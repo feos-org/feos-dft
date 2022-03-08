@@ -5,9 +5,9 @@ macro_rules! impl_surface_tension_diagram {
         ///
         /// Parameters
         /// ----------
-        /// dia : PhaseDiagramPure
-        ///     The underlying face diagram for which surface tensions shall
-        ///     be calculated.
+        /// dia : [PhaseEquilibrium]
+        ///     The underlying phase diagram given as a list of states
+        ///     for which surface tensions shall be calculated.
         /// init_densities : bool, optional
         ///     None: Do not initialize densities with old results
         ///     True: Initialize and scale densities
