@@ -186,8 +186,8 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         // Calculate residual Helmholtz energy density and functional derivative
-        let t = temperature.to_reduced(U::reference_temperature()).unwrap();
-        let rho = density.to_reduced(U::reference_density()).unwrap();
+        let t = temperature.to_reduced(U::reference_temperature())?;
+        let rho = density.to_reduced(U::reference_density())?;
         let (mut f, dfdrho) = self.functional_derivative(t, &rho, convolver)?;
 
         // calculate the grand potential density

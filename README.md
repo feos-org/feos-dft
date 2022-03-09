@@ -12,7 +12,7 @@ Add this to your `Cargo.toml`
 
 ```toml
 [dependencies]
-feos-dft = "0.1"
+feos-dft = "0.2"
 ```
 
 ## Test building python wheel

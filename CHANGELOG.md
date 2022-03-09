@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2022-03-09
+### Packaging
+- Updated `pyo3` and `numpy` dependencies to 0.16.
+- Updated `quantity` dependency to 0.5.
+- Updated `num-dual` dependency to 0.5.
+- Updated `feos-core` dependency to 0.2.
+- Updated `ang` dependency to 0.6.
+
 ## [0.1.3] - 2022-02-17
 ### Fixed
 - The pore volume for `Pore3D` is now also accesible from Python. [#16](https://github.com/feos-org/feos-dft/pull/16)
