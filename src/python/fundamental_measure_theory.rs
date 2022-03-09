@@ -4,7 +4,6 @@ use crate::functional::DFT;
 use crate::fundamental_measure_theory::{FMTFunctional, FMTVersion};
 use crate::solvation::*;
 use crate::*;
-use feos_core::python::{PyContributions, PyVerbosity};
 use feos_core::*;
 use numpy::*;
 use pyo3::exceptions::PyValueError;

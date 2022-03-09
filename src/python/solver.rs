@@ -130,10 +130,7 @@ impl PyDFTSolver {
     fn _repr_markdown_(&self) -> String {
         self.0._repr_markdown_()
     }
-}
 
-#[pyproto]
-impl pyo3::class::basic::PyObjectProtocol for PyDFTSolver {
     fn __repr__(&self) -> PyResult<String> {
         Ok(self.0.to_string())
     }

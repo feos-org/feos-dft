@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pymodule;
-use quantity::python::PyInit_quantity;
+use quantity::python::__PYO3_PYMODULE_DEF_QUANTITY;
 
 mod adsorption;
 mod fundamental_measure_theory;

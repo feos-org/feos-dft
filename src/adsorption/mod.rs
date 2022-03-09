@@ -2,7 +2,7 @@
 use super::functional::{HelmholtzEnergyFunctional, DFT};
 use super::solver::DFTSolver;
 use feos_core::{
-    Contributions, EosError, EosResult, EosUnit, EquationOfState, StateBuilder, VLEOptions,
+    Contributions, EosError, EosResult, EosUnit, EquationOfState, SolverOptions, StateBuilder,
 };
 use ndarray::{arr1, Array1, Dimension, Ix1, Ix3};
 use quantity::{QuantityArray1, QuantityArray2, QuantityScalar};
@@ -179,7 +179,7 @@ where
             pore,
             molefracs,
             solver,
-            VLEOptions::default(),
+            SolverOptions::default(),
         );
         if let Ok(equilibrium) = equilibrium {
             let pressure = pressure.equilibrium(&equilibrium)?;
@@ -259,9 +259,9 @@ where
             .pressure(pressure.get(0))
             .moles(&moles)
             .build()?;
-        if functional.components() > 1 && !bulk.is_stable(VLEOptions::default())? {
+        if functional.components() > 1 && !bulk.is_stable(SolverOptions::default())? {
             bulk = bulk
-                .tp_flash(None, VLEOptions::default(), None)?
+                .tp_flash(None, SolverOptions::default(), None)?
                 .vapor()
                 .clone();
         }
@@ -273,9 +273,9 @@ where
                 .pressure(pressure.get(i))
                 .moles(&moles)
                 .build()?;
-            if functional.components() > 1 && !bulk.is_stable(VLEOptions::default())? {
+            if functional.components() > 1 && !bulk.is_stable(SolverOptions::default())? {
                 bulk = bulk
-                    .tp_flash(None, VLEOptions::default(), None)?
+                    .tp_flash(None, SolverOptions::default(), None)?
                     .vapor()
                     .clone();
             }
@@ -299,7 +299,7 @@ where
         pore: &S,
         molefracs: Option<&Array1<f64>>,
         solver: Option<&DFTSolver>,
-        options: VLEOptions,
+        options: SolverOptions,
     ) -> EosResult<Adsorption<U, D, F>> {
         let moles =
             functional.validate_moles(molefracs.map(|x| x * U::reference_moles()).as_ref())?;
@@ -395,11 +395,11 @@ where
         QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
-                    && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
+                    && !p.profile.bulk.is_stable(SolverOptions::default()).unwrap()
                 {
                     p.profile
                         .bulk
-                        .tp_flash(None, VLEOptions::default(), None)
+                        .tp_flash(None, SolverOptions::default(), None)
                         .unwrap()
                         .vapor()
                         .pressure(Contributions::Total)
@@ -415,11 +415,11 @@ where
         QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
-                    && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
+                    && !p.profile.bulk.is_stable(SolverOptions::default()).unwrap()
                 {
                     p.profile
                         .bulk
-                        .tp_flash(None, VLEOptions::default(), None)
+                        .tp_flash(None, SolverOptions::default(), None)
                         .unwrap()
                         .vapor()
                         .molar_gibbs_energy(Contributions::Total)

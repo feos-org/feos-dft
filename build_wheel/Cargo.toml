@@ -9,5 +9,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 feos-dft = { path = "..", features = ["python"] }
-pyo3 = { version = "0.15", features = ["extension-module", "abi3", "abi3-py36"] }
+pyo3 = { version = "0.16", features = ["extension-module", "abi3", "abi3-py37"] }
 

@@ -117,14 +117,14 @@ macro_rules! impl_profile {
             /// Returns
             /// -------
             /// SIArray
-            #[args(contributions = "PyContributions::Total()")]
+            #[args(contributions = "Contributions::Total")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn entropy_density(
                 &mut self,
-                contributions: PyContributions,
+                contributions: Contributions,
             ) -> PyResult<$si_arr> {
                 Ok($si_arr::from(
-                    self.0.profile.entropy_density(contributions.0)?,
+                    self.0.profile.entropy_density(contributions)?,
                 ))
             }
 
@@ -139,14 +139,14 @@ macro_rules! impl_profile {
             /// Returns
             /// -------
             /// SINumber
-            #[args(contributions = "PyContributions::Total()")]
+            #[args(contributions = "Contributions::Total")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn entropy(
                 &mut self,
-                contributions: PyContributions,
+                contributions: Contributions,
             ) -> PyResult<PySINumber> {
                 Ok(PySINumber::from(
-                    self.0.profile.entropy(contributions.0)?,
+                    self.0.profile.entropy(contributions)?,
                 ))
             }
 
@@ -161,14 +161,14 @@ macro_rules! impl_profile {
             /// Returns
             /// -------
             /// SINumber
-            #[args(contributions = "PyContributions::Total()")]
+            #[args(contributions = "Contributions::Total")]
             #[pyo3(text_signature = "($self, contributions)")]
             fn internal_energy(
                 &mut self,
-                contributions: PyContributions,
+                contributions: Contributions,
             ) -> PyResult<PySINumber> {
                 Ok(PySINumber::from(
-                    self.0.profile.internal_energy(contributions.0)?,
+                    self.0.profile.internal_energy(contributions)?,
                 ))
             }
         }

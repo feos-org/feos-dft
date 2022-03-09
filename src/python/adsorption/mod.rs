@@ -219,7 +219,7 @@ macro_rules! impl_adsorption_isotherm {
                 solver: Option<PyDFTSolver>,
                 max_iter: Option<usize>,
                 tol: Option<f64>,
-                verbosity: Option<PyVerbosity>,
+                verbosity: Option<Verbosity>,
             ) -> PyResult<Self> {
                 Ok(Self(Adsorption::phase_equilibrium(
                     &functional.0,
@@ -229,7 +229,7 @@ macro_rules! impl_adsorption_isotherm {
                     &pore.0,
                     molefracs.map(|x| x.to_owned_array()).as_ref(),
                     solver.map(|s| s.0).as_ref(),
-                    (max_iter, tol, verbosity.map(|v| v.0)).into(),
+                    (max_iter, tol, verbosity).into(),
                 )?))
             }
 
