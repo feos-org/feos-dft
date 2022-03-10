@@ -77,6 +77,18 @@ impl PyDFTSolver {
         Self(solver)
     }
 
+    fn log_iter(&self) -> Self {
+        let mut solver = self.0.clone();
+        solver.verbosity = Verbosity::Iter;
+        Self(solver)
+    }
+
+    fn log_result(&self) -> Self {
+        let mut solver = self.0.clone();
+        solver.verbosity = Verbosity::Result;
+        Self(solver)
+    }
+
     /// Add Anderson mixing to the solver object.
     ///
     /// Parameters
