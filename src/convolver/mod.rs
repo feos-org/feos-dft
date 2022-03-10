@@ -1,4 +1,4 @@
-use crate::geometry::{Axis, AxisGeometry, Grid};
+use crate::geometry::{Axis, Geometry, Grid};
 use crate::weight_functions::*;
 use ndarray::prelude::*;
 use ndarray::{Axis as Axis_nd, RemoveAxis, ScalarOperand, Slice};
@@ -132,9 +132,9 @@ where
         let mut lengths = Vec::with_capacity(cartesian_axes.len() + 1);
         let (transform, k_x) = match axis {
             Some(axis) => match axis.geometry {
-                AxisGeometry::Cartesian => CartesianTransform::new(axis),
-                AxisGeometry::Polar => PolarTransform::new(axis),
-                AxisGeometry::Spherical => SphericalTransform::new(axis),
+                Geometry::Cartesian => CartesianTransform::new(axis),
+                Geometry::Cylindrical => PolarTransform::new(axis),
+                Geometry::Spherical => SphericalTransform::new(axis),
             },
             None => NoTransform::new(),
         };

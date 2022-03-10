@@ -1,32 +1,27 @@
 use crate::DFTSolver;
+use feos_core::Verbosity;
 use pyo3::prelude::*;
 
 /// Settings for the DFT solver.
 ///
 /// Parameters
 /// ----------
-/// output: bool, optional
-///     Print the progress to the console.
+/// verbosity: Verbosity, optional
+///     The verbosity level of the solver.
 ///
 /// Returns
 /// -------
-/// empty solver: DFTSolver
+/// DFTSolver
 #[pyclass(name = "DFTSolver")]
 #[derive(Clone)]
-#[pyo3(text_signature = "(output=None)")]
+#[pyo3(text_signature = "(verbosity=None)")]
 pub struct PyDFTSolver(pub DFTSolver);
 
 #[pymethods]
 impl PyDFTSolver {
     #[new]
-    fn new(output: Option<bool>) -> Self {
-        let mut solver = DFTSolver::new();
-        if let Some(output) = output {
-            if output {
-                solver = solver.output();
-            }
-        }
-        Self(solver)
+    fn new(verbosity: Option<Verbosity>) -> Self {
+        Self(DFTSolver::new(verbosity.unwrap_or_default()))
     }
 
     /// The default solver.

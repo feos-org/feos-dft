@@ -23,6 +23,7 @@ pub trait FMTProperties {
 
 /// Different versions of fundamental measure theory
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "python", pyo3::pyclass)]
 pub enum FMTVersion {
     /// White Bear ([Roth et al., 2002](https://doi.org/10.1088/0953-8984/14/46/313)) or modified ([Yu and Wu, 2002](https://doi.org/10.1063/1.1520530)) fundamental measure theory
     WhiteBear,

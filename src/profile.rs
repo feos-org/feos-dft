@@ -3,8 +3,9 @@ use crate::functional::{HelmholtzEnergyFunctional, DFT};
 use crate::geometry::Grid;
 use crate::solver::DFTSolver;
 use crate::weight_functions::WeightFunctionInfo;
-use feos_core::{Contributions, EosError, EosResult, EosUnit, EquationOfState, State};
-use log::{info, warn};
+use feos_core::{
+    log_result, Contributions, EosError, EosResult, EosUnit, EquationOfState, State, Verbosity,
+};
 use ndarray::{
     s, Array, Array1, ArrayBase, ArrayViewMut, ArrayViewMut1, Axis as Axis_nd, Data, Dimension,
     Ix1, Ix2, Ix3, RemoveAxis,
@@ -520,9 +521,13 @@ where
         // Call solver(s)
         let (converged, iterations) = solver.solve(&mut x, &mut residual)?;
         if converged {
-            info!("DFT solved in {} iterations", iterations);
+            log_result!(solver.verbosity, "DFT solved in {} iterations", iterations);
         } else if debug {
-            warn!("DFT not converged in {} iterations", iterations);
+            log_result!(
+                solver.verbosity,
+                "DFT not converged in {} iterations",
+                iterations
+            );
         } else {
             return Err(EosError::NotConverged(String::from("DFT")));
         }

@@ -34,14 +34,14 @@ macro_rules! impl_pore {
         impl PyPore1D {
             #[new]
             fn new(
-                geometry: PyGeometry,
+                geometry: Geometry,
                 pore_size: PySINumber,
                 potential: PyExternalPotential,
                 n_grid: Option<usize>,
                 potential_cutoff: Option<f64>,
             ) -> Self {
                 Self(Pore1D::new(
-                    geometry.0,
+                    geometry,
                     pore_size.into(),
                     potential.0,
                     n_grid,
