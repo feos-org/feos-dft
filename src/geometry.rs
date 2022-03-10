@@ -19,9 +19,9 @@ pub enum Grid {
 impl Grid {
     pub fn new_1d(axis: Axis) -> Self {
         match axis.geometry {
-            AxisGeometry::Cartesian => Self::Cartesian1(axis),
-            AxisGeometry::Polar => Self::Polar(axis),
-            AxisGeometry::Spherical => Self::Spherical(axis),
+            Geometry::Cartesian => Self::Cartesian1(axis),
+            Geometry::Cylindrical => Self::Polar(axis),
+            Geometry::Spherical => Self::Spherical(axis),
         }
     }
 
@@ -66,18 +66,19 @@ impl Grid {
 
 /// Geometries of individual axes.
 #[derive(Copy, Clone)]
-pub enum AxisGeometry {
+#[cfg_attr(feature = "python", pyo3::pyclass)]
+pub enum Geometry {
     Cartesian,
-    Polar,
+    Cylindrical,
     Spherical,
 }
 
-impl AxisGeometry {
+impl Geometry {
     /// Return the number of spatial dimensions for this geometry.
     pub fn dimension(&self) -> i32 {
         match self {
             Self::Cartesian => 1,
-            Self::Polar => 2,
+            Self::Cylindrical => 2,
             Self::Spherical => 3,
         }
     }
@@ -86,7 +87,7 @@ impl AxisGeometry {
 /// An individual discretized axis.
 #[derive(Clone)]
 pub struct Axis {
-    pub geometry: AxisGeometry,
+    pub geometry: Geometry,
     pub grid: Array1<f64>,
     pub edges: Array1<f64>,
     integration_weights: Array1<f64>,
@@ -110,7 +111,7 @@ impl Axis {
         let edges = Array1::linspace(0.0, l, points + 1);
         let integration_weights = Array1::from_elem(points, cell_size);
         Ok(Self {
-            geometry: AxisGeometry::Cartesian,
+            geometry: Geometry::Cartesian,
             grid,
             edges,
             integration_weights,
@@ -128,7 +129,7 @@ impl Axis {
             4.0 * FRAC_PI_3 * cell_size.powi(3) * (3 * k * k + 3 * k + 1) as f64
         });
         Ok(Self {
-            geometry: AxisGeometry::Spherical,
+            geometry: Geometry::Spherical,
             grid,
             edges,
             integration_weights,
@@ -174,7 +175,7 @@ impl Axis {
             .collect();
 
         Ok(Self {
-            geometry: AxisGeometry::Polar,
+            geometry: Geometry::Cylindrical,
             grid,
             edges,
             integration_weights,
@@ -199,9 +200,9 @@ impl Axis {
         let length = (self.edges[self.grid.len()] - self.potential_offset - self.edges[0])
             * U::reference_length();
         (match self.geometry {
-            AxisGeometry::Cartesian => 1.0,
-            AxisGeometry::Polar => 4.0 * PI,
-            AxisGeometry::Spherical => 4.0 * FRAC_PI_3,
+            Geometry::Cartesian => 1.0,
+            Geometry::Cylindrical => 4.0 * PI,
+            Geometry::Spherical => 4.0 * FRAC_PI_3,
         }) * length.powi(self.geometry.dimension())
     }
 
@@ -219,10 +220,8 @@ impl Axis {
                 n - 1
             } else {
                 match self.geometry {
-                    AxisGeometry::Cartesian | AxisGeometry::Spherical => {
-                        (x / self.edges[1]) as usize
-                    }
-                    AxisGeometry::Polar => {
+                    Geometry::Cartesian | Geometry::Spherical => (x / self.edges[1]) as usize,
+                    Geometry::Cylindrical => {
                         if x < self.edges[1] {
                             0
                         } else {

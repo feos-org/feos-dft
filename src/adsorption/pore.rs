@@ -2,7 +2,7 @@ use crate::adsorption::{ExternalPotential, FluidParameters};
 use crate::convolver::ConvolverFFT;
 use crate::functional::{HelmholtzEnergyFunctional, DFT};
 use crate::functional_contribution::FunctionalContribution;
-use crate::geometry::{Axis, AxisGeometry, Grid};
+use crate::geometry::{Axis, Geometry, Grid};
 use crate::profile::{DFTProfile, CUTOFF_RADIUS, MAX_POTENTIAL};
 use crate::solver::DFTSolver;
 use feos_core::{Contributions, EosResult, EosUnit, State, StateBuilder};
@@ -19,7 +19,7 @@ const DEFAULT_GRID_POINTS: usize = 2048;
 /// Parameters required to specify a 1D pore.
 pub struct Pore1D<U> {
     // functional: Rc<DFT<F>>,
-    geometry: AxisGeometry,
+    geometry: Geometry,
     pore_size: QuantityScalar<U>,
     potential: ExternalPotential<U>,
     n_grid: Option<usize>,
@@ -28,7 +28,7 @@ pub struct Pore1D<U> {
 
 impl<U: EosUnit> Pore1D<U> {
     pub fn new(
-        geometry: AxisGeometry,
+        geometry: Geometry,
         pore_size: QuantityScalar<U>,
         potential: ExternalPotential<U>,
         n_grid: Option<usize>,
@@ -180,13 +180,13 @@ impl<U: EosUnit> PoreSpecification<U, Ix1> for Pore1D<U> {
         let n_grid = self.n_grid.unwrap_or(DEFAULT_GRID_POINTS);
 
         let axis = match self.geometry {
-            AxisGeometry::Cartesian => {
+            Geometry::Cartesian => {
                 let potential_offset =
                     POTENTIAL_OFFSET * bulk.eos.functional.sigma_ff().max().unwrap();
                 Axis::new_cartesian(n_grid, 0.5 * self.pore_size, Some(potential_offset))?
             }
-            AxisGeometry::Polar => Axis::new_polar(n_grid, self.pore_size)?,
-            AxisGeometry::Spherical => Axis::new_spherical(n_grid, self.pore_size)?,
+            Geometry::Cylindrical => Axis::new_polar(n_grid, self.pore_size)?,
+            Geometry::Spherical => Axis::new_spherical(n_grid, self.pore_size)?,
         };
 
         // calculate external potential
@@ -290,13 +290,13 @@ fn external_potential_1d<U: EosUnit, P: FluidParameters>(
 ) -> EosResult<Array2<f64>> {
     let potential_cutoff = potential_cutoff.unwrap_or(MAX_POTENTIAL);
     let effective_pore_size = match axis.geometry {
-        AxisGeometry::Spherical => pore_width.to_reduced(U::reference_length())?,
-        AxisGeometry::Polar => pore_width.to_reduced(U::reference_length())?,
-        AxisGeometry::Cartesian => 0.5 * pore_width.to_reduced(U::reference_length())?,
+        Geometry::Spherical => pore_width.to_reduced(U::reference_length())?,
+        Geometry::Cylindrical => pore_width.to_reduced(U::reference_length())?,
+        Geometry::Cartesian => 0.5 * pore_width.to_reduced(U::reference_length())?,
     };
     let t = temperature.to_reduced(U::reference_temperature())?;
     let mut external_potential = match &axis.geometry {
-        AxisGeometry::Cartesian => {
+        Geometry::Cartesian => {
             potential.calculate_cartesian_potential(
                 &(effective_pore_size + &axis.grid),
                 fluid_parameters,
@@ -307,13 +307,13 @@ fn external_potential_1d<U: EosUnit, P: FluidParameters>(
                 t,
             )
         }
-        AxisGeometry::Spherical => potential.calculate_spherical_potential(
+        Geometry::Spherical => potential.calculate_spherical_potential(
             &axis.grid,
             effective_pore_size,
             fluid_parameters,
             t,
         ),
-        AxisGeometry::Polar => potential.calculate_cylindrical_potential(
+        Geometry::Cylindrical => potential.calculate_cylindrical_potential(
             &axis.grid,
             effective_pore_size,
             fluid_parameters,

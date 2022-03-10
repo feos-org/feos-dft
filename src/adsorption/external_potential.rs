@@ -1,5 +1,5 @@
 use crate::adsorption::fea_potential::calculate_fea_potential;
-use crate::geometry::AxisGeometry;
+use crate::geometry::Geometry;
 use feos_core::EosUnit;
 use libc::c_double;
 use ndarray::{Array1, Array2, Axis as Axis_nd};
@@ -184,7 +184,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Cartesian,
+                        Geometry::Cartesian,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -330,7 +330,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Polar,
+                        Geometry::Cylindrical,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -491,7 +491,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Spherical,
+                        Geometry::Spherical,
                     )
                 }
                 Self::Custom(_) => unreachable!(),

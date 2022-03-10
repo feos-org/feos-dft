@@ -1,5 +1,4 @@
 use crate::adsorption::ExternalPotential;
-use crate::geometry::AxisGeometry;
 use numpy::PyArray1;
 use pyo3::prelude::*;
 use quantity::python::{PySIArray2, PySINumber};
@@ -214,48 +213,5 @@ impl PyExternalPotential {
             ],
             n_grid,
         })
-    }
-}
-
-/// Geometry of a one-dimensional pore.
-///
-/// Returns
-/// -------
-/// Geometry
-#[pyclass(name = "Geometry")]
-#[derive(Clone)]
-pub struct PyGeometry(pub AxisGeometry);
-
-#[pymethods]
-#[allow(non_snake_case)]
-impl PyGeometry {
-    /// Cartesian coordinates.
-    ///
-    /// Returns
-    /// -------
-    /// AxisGeometry
-    #[classattr]
-    pub fn Cartesian() -> Self {
-        Self(AxisGeometry::Cartesian)
-    }
-
-    /// Cylindrical coordinates.
-    ///
-    /// Returns
-    /// -------
-    /// AxisGeometry
-    #[classattr]
-    pub fn Cylindrical() -> Self {
-        Self(AxisGeometry::Polar)
-    }
-
-    /// Spherical coordinates.
-    ///
-    /// Returns
-    /// -------
-    /// AxisGeometry
-    #[classattr]
-    pub fn Spherical() -> Self {
-        Self(AxisGeometry::Spherical)
     }
 }

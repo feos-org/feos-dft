@@ -1,5 +1,5 @@
 use crate::profile::{CUTOFF_RADIUS, MAX_POTENTIAL};
-use crate::AxisGeometry;
+use crate::Geometry;
 use feos_core::EosUnit;
 use gauss_quad::GaussLegendre;
 use ndarray::{Array1, Array2, Zip};
@@ -19,7 +19,7 @@ pub fn calculate_fea_potential<U: EosUnit>(
     system_size: &[QuantityScalar<U>; 3],
     n_grid: &[usize; 2],
     temperature: f64,
-    geometry: AxisGeometry,
+    geometry: Geometry,
 ) -> Array1<f64> {
     // allocate external potential
     let mut potential: Array1<f64> = Array1::zeros(grid.len());
@@ -45,7 +45,7 @@ pub fn calculate_fea_potential<U: EosUnit>(
     // Cylindrical coordinates => phi
     // Spherical coordinates => phi
     let (nodes1, weights1) = match geometry {
-        AxisGeometry::Cartesian => {
+        Geometry::Cartesian => {
             let nodes = Array1::linspace(
                 0.5 * system_size[1] / n_grid[0] as f64,
                 system_size[1] - 0.5 * system_size[1] / n_grid[0] as f64,
@@ -54,7 +54,7 @@ pub fn calculate_fea_potential<U: EosUnit>(
             let weights = Array1::from_elem(n_grid[0], system_size[1] / n_grid[0] as f64);
             (nodes, weights)
         }
-        AxisGeometry::Spherical | AxisGeometry::Polar => {
+        Geometry::Spherical | Geometry::Cylindrical => {
             let nodes = PI + Array1::from_vec(GaussLegendre::nodes_and_weights(n_grid[0]).0) * PI;
             let weights = Array1::from_vec(GaussLegendre::nodes_and_weights(n_grid[0]).1) * PI;
             (nodes, weights)
@@ -66,7 +66,7 @@ pub fn calculate_fea_potential<U: EosUnit>(
     // Cylindrical coordinates => z
     // Spherical coordinates => theta
     let (nodes2, weights2) = match geometry {
-        AxisGeometry::Polar | AxisGeometry::Cartesian => {
+        Geometry::Cylindrical | Geometry::Cartesian => {
             let nodes = Array1::linspace(
                 0.5 * system_size[2] / n_grid[1] as f64,
                 system_size[2] - 0.5 * system_size[2] / n_grid[1] as f64,
@@ -75,7 +75,7 @@ pub fn calculate_fea_potential<U: EosUnit>(
             let weights = Array1::from_elem(n_grid[1], system_size[2] / n_grid[1] as f64);
             (nodes, weights)
         }
-        AxisGeometry::Spherical => {
+        Geometry::Spherical => {
             let nodes = PI / 2.0
                 + Array1::from_vec(GaussLegendre::nodes_and_weights(n_grid[1]).0) * PI / 2.0;
             let weights = Array1::from_vec(GaussLegendre::nodes_and_weights(n_grid[1]).1) * PI
@@ -97,13 +97,13 @@ pub fn calculate_fea_potential<U: EosUnit>(
         for (i1, &n1) in nodes1.iter().enumerate() {
             for (i2, &n2) in nodes2.iter().enumerate() {
                 let point = match geometry {
-                    AxisGeometry::Cartesian => [grid[i0], n1, n2],
-                    AxisGeometry::Polar => [
+                    Geometry::Cartesian => [grid[i0], n1, n2],
+                    Geometry::Cylindrical => [
                         pore_center[0] + grid[i0] * n1.cos(),
                         pore_center[1] + grid[i0] * n1.sin(),
                         n2,
                     ],
-                    AxisGeometry::Spherical => [
+                    Geometry::Spherical => [
                         pore_center[0] + grid[i0] * n2.sin() * n1.cos(),
                         pore_center[1] + grid[i0] * n2.sin() * n1.sin(),
                         pore_center[2] + grid[i0] * n2.cos(),
