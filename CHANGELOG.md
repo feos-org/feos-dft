@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2022-03-??
 ### Changed
-- Renamed `AxisGeometry` to `Geometry`.
-- Removed `PyGeometry` and `PyFMTVersion` in favor of a simpler implementation using `PyO3`'s new `#[pyclass]` for fieldless enums feature.
-- `DFTSolver` now uses `Verbosity` instead of a `bool` to control its output.
+- Renamed `AxisGeometry` to `Geometry`. [#19](https://github.com/feos-org/feos-dft/pull/19)
+- Removed `PyGeometry` and `PyFMTVersion` in favor of a simpler implementation using `PyO3`'s new `#[pyclass]` for fieldless enums feature. [#19](https://github.com/feos-org/feos-dft/pull/19)
+- `DFTSolver` now uses `Verbosity` instead of a `bool` to control its output. [#19](https://github.com/feos-org/feos-dft/pull/19)
+- `SurfaceTensionDiagram` now uses the new `StateVec` struct to access properties of the bulk phases. [#19](https://github.com/feos-org/feos-dft/pull/19)
 
 ### Packaging
 - Updated `pyo3` and `numpy` dependencies to 0.16.
