@@ -62,23 +62,13 @@ macro_rules! impl_surface_tension_diagram {
             }
 
             #[getter]
-            pub fn get_temperature(&self) -> PySIArray1 {
-                self.0.temperature().into()
+            pub fn get_vapor(&self) -> PyStateVec {
+                self.0.vapor().into()
             }
 
             #[getter]
-            pub fn get_pressure(&self) -> PySIArray1 {
-                self.0.pressure().into()
-            }
-
-            #[getter]
-            fn get_vapor_molefracs<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
-                self.0.vapor_molefracs().view().to_pyarray(py)
-            }
-
-            #[getter]
-            fn get_liquid_molefracs<'py>(&self, py: Python<'py>) -> &'py PyArray1<f64> {
-                self.0.liquid_molefracs().view().to_pyarray(py)
+            pub fn get_liquid(&self) -> PyStateVec {
+                self.0.liquid().into()
             }
 
             #[getter]
