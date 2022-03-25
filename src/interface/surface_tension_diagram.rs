@@ -1,8 +1,7 @@
 use super::PlanarInterface;
 use crate::functional::{HelmholtzEnergyFunctional, DFT};
 use crate::solver::DFTSolver;
-use feos_core::{Contributions, EosUnit, EquationOfState, PhaseEquilibrium};
-use ndarray::Array1;
+use feos_core::{EosUnit, PhaseEquilibrium, StateVec};
 use quantity::{QuantityArray1, QuantityScalar};
 
 const DEFAULT_GRID_POINTS: usize = 2048;
@@ -64,40 +63,12 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> SurfaceTensionDiagram<U, F> {
         Self { profiles }
     }
 
-    pub fn temperature(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.profiles.len(), |i| {
-            self.profiles[i].profile.temperature
-        })
+    pub fn vapor(&self) -> StateVec<'_, U, DFT<F>> {
+        self.profiles.iter().map(|p| p.vle.vapor()).collect()
     }
 
-    pub fn pressure(&self) -> QuantityArray1<U> {
-        QuantityArray1::from_shape_fn(self.profiles.len(), |i| {
-            self.profiles[i].vle.vapor().pressure(Contributions::Total)
-        })
-    }
-
-    pub fn vapor_molefracs(&self) -> Array1<f64> {
-        let mut x: Array1<f64> = self
-            .profiles
-            .iter()
-            .map(|p| p.vle.vapor().molefracs[0])
-            .collect();
-        if self.profiles[0].vle.vapor().eos.components() == 1 {
-            x[0] = 0.0;
-        }
-        x
-    }
-
-    pub fn liquid_molefracs(&self) -> Array1<f64> {
-        let mut x: Array1<f64> = self
-            .profiles
-            .iter()
-            .map(|p| p.vle.liquid().molefracs[0])
-            .collect();
-        if self.profiles[0].vle.liquid().eos.components() == 1 {
-            x[0] = 0.0;
-        }
-        x
+    pub fn liquid(&self) -> StateVec<'_, U, DFT<F>> {
+        self.profiles.iter().map(|p| p.vle.liquid()).collect()
     }
 
     pub fn surface_tension(&mut self) -> QuantityArray1<U> {
