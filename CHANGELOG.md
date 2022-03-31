@@ -6,12 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2022-03-??
+## [0.2.0] - 2022-04-??
 ### Changed
 - Renamed `AxisGeometry` to `Geometry`. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - Removed `PyGeometry` and `PyFMTVersion` in favor of a simpler implementation using `PyO3`'s new `#[pyclass]` for fieldless enums feature. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - `DFTSolver` now uses `Verbosity` instead of a `bool` to control its output. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - `SurfaceTensionDiagram` now uses the new `StateVec` struct to access properties of the bulk phases. [#19](https://github.com/feos-org/feos-dft/pull/19)
+- `Pore1D::initialize` and `Pore3D::initialize` now accept initial values for the density profiles as optional arguments. [#24](https://github.com/feos-org/feos-dft/pull/24)
 
 ### Packaging
 - Updated `pyo3` and `numpy` dependencies to 0.16.
