@@ -97,7 +97,7 @@ pub trait PoreSpecification<U: EosUnit, D: Dimension> {
     {
         let bulk = StateBuilder::new(&Rc::new(Helium::new()))
             .temperature(298.0 * U::reference_temperature())
-            .volume(U::reference_volume())
+            .density(U::reference_density())
             .build()?;
         let pore = self.initialize(&bulk, None, None)?;
         let pot = pore
