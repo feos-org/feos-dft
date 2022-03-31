@@ -82,7 +82,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, None);
 
         Ok(Self {
-            profile: DFTProfile::new(grid, convolver, vle.vapor(), None)?,
+            profile: DFTProfile::new(grid, convolver, vle.vapor(), None, None)?,
             vle: vle.clone(),
             surface_tension: None,
             equimolar_radius: None,
