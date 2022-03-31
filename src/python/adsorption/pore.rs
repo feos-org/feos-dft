@@ -55,6 +55,8 @@ macro_rules! impl_pore {
             /// ----------
             /// bulk : State
             ///     The bulk state in equilibrium with the pore.
+            /// density : SIArray2, optional
+            ///     Initial values for the density profile.
             /// external_potential : numpy.ndarray[float], optional
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
@@ -63,14 +65,16 @@ macro_rules! impl_pore {
             /// Returns
             /// -------
             /// PoreProfile1D
-            #[pyo3(text_signature = "($self, bulk, external_potential=None)")]
+            #[pyo3(text_signature = "($self, bulk, density=None, external_potential=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,
+                density: Option<PySIArray2>,
                 external_potential: Option<&PyArray2<f64>>,
             ) -> PyResult<PyPoreProfile1D> {
                 Ok(PyPoreProfile1D(self.0.initialize(
                     &bulk.0,
+                    density.as_deref(),
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
                 )?))
             }
@@ -156,6 +160,8 @@ macro_rules! impl_pore {
             /// ----------
             /// bulk : State
             ///     The bulk state in equilibrium with the pore.
+            /// density : SIArray4, optional
+            ///     Initial values for the density profile.
             /// external_potential : numpy.ndarray[float], optional
             ///     The external potential in the pore. Used to
             ///     save computation time in the case of costly
@@ -164,14 +170,16 @@ macro_rules! impl_pore {
             /// Returns
             /// -------
             /// PoreProfile3D
-            #[pyo3(text_signature = "($self, bulk, external_potential=None)")]
+            #[pyo3(text_signature = "($self, bulk, density=None, external_potential=None)")]
             fn initialize(
                 &self,
                 bulk: &PyState,
+                density: Option<PySIArray4>,
                 external_potential: Option<&PyArray4<f64>>,
             ) -> PyResult<PyPoreProfile3D> {
                 Ok(PyPoreProfile3D(self.0.initialize(
                     &bulk.0,
+                    density.as_deref(),
                     external_potential.map(|e| e.to_owned_array()).as_ref(),
                 )?))
             }
