@@ -20,12 +20,13 @@ pub fn calculate_fea_potential<U: EosUnit>(
     n_grid: &[usize; 2],
     temperature: f64,
     geometry: Geometry,
+    cutoff_radius: Option<f64>,
 ) -> Array1<f64> {
     // allocate external potential
     let mut potential: Array1<f64> = Array1::zeros(grid.len());
 
     // calculate squared cutoff radius
-    let cutoff_radius2 = CUTOFF_RADIUS.powi(2);
+    let cutoff_radius2 = cutoff_radius.unwrap_or(CUTOFF_RADIUS).powi(2);
 
     // dimensionless solid coordinates
     let coordinates = Array2::from_shape_fn(coordinates.raw_dim(), |(i, j)| {

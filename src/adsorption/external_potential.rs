@@ -49,6 +49,7 @@ pub enum ExternalPotential<U> {
         pore_center: [f64; 3],
         system_size: [QuantityScalar<U>; 3],
         n_grid: [usize; 2],
+        cutoff_radius: Option<f64>,
     },
 
     /// Custom potential
@@ -168,6 +169,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -185,6 +187,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         n_grid,
                         temperature,
                         Geometry::Cartesian,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -314,6 +317,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -331,6 +335,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         n_grid,
                         temperature,
                         Geometry::Cylindrical,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -475,6 +480,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -492,6 +498,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                         n_grid,
                         temperature,
                         Geometry::Spherical,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
