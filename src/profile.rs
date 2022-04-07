@@ -80,18 +80,9 @@ impl DFTSpecifications {
             .density
             .to_reduced(U::reference_density())?
             .sum_axis(Axis_nd(0));
-        let temperature = profile
-            .bulk
-            .temperature
-            .to_reduced(U::reference_temperature())?;
-        let mu_comp = profile
-            .chemical_potential
-            .to_reduced(U::reference_molar_energy())?
-            / temperature;
-        let mu_segment = profile.dft.component_index.mapv(|c| mu_comp[c]);
         Ok(Rc::new(Self::TotalMoles {
             total_moles: profile.integrate_reduced(rho),
-            chemical_potential: mu_segment,
+            chemical_potential: profile.reduced_chemical_potential()?,
         }))
     }
 }
@@ -128,7 +119,6 @@ pub struct DFTProfile<U, D: Dimension, F> {
     pub dft: Rc<DFT<F>>,
     pub temperature: QuantityScalar<U>,
     pub density: QuantityArray<U, D::Larger>,
-    pub chemical_potential: QuantityArray1<U>,
     pub specification: Rc<dyn DFTSpecification<U, D, F>>,
     pub external_potential: Array<f64, D::Larger>,
     pub bulk: State<U, DFT<F>>,
@@ -230,7 +220,6 @@ where
             dft: bulk.eos.clone(),
             temperature: bulk.temperature,
             density: density * U::reference_density(),
-            chemical_potential: bulk.chemical_potential(Contributions::Total),
             specification: Rc::new(DFTSpecifications::ChemicalPotential),
             external_potential,
             bulk: bulk.clone(),
@@ -303,6 +292,29 @@ where
     pub fn total_moles(&self) -> QuantityScalar<U> {
         self.moles().sum()
     }
+
+    /// Return the chemical potential of the system
+    pub fn chemical_potential(&self) -> QuantityArray1<U> {
+        self.bulk.chemical_potential(Contributions::Total)
+    }
+
+    fn reduced_chemical_potential(&self) -> EosResult<Array1<f64>> {
+        let temperature = self
+            .bulk
+            .temperature
+            .to_reduced(U::reference_temperature())?;
+        let lambda_de_broglie = self
+            .dft
+            .functional
+            .ideal_gas()
+            .de_broglie_wavelength(temperature, self.bulk.eos.components());
+        let mu_comp = self
+            .chemical_potential()
+            .to_reduced(U::reference_molar_energy())?
+            / temperature
+            - lambda_de_broglie;
+        Ok(self.dft.component_index.mapv(|c| mu_comp[c]))
+    }
 }
 
 impl<U: Clone, D: Dimension, F> Clone for DFTProfile<U, D, F> {
@@ -313,7 +325,6 @@ impl<U: Clone, D: Dimension, F> Clone for DFTProfile<U, D, F> {
             dft: self.dft.clone(),
             temperature: self.temperature.clone(),
             density: self.density.clone(),
-            chemical_potential: self.chemical_potential.clone(),
             specification: self.specification.clone(),
             external_potential: self.external_potential.clone(),
             bulk: self.bulk.clone(),
@@ -348,17 +359,7 @@ where
         // Read from profile
         let temperature = self.temperature.to_reduced(U::reference_temperature())?;
         let density = self.density.to_reduced(U::reference_density())?;
-        let lambda_de_broglie = self
-            .dft
-            .functional
-            .ideal_gas()
-            .de_broglie_wavelength(temperature, self.bulk.eos.components());
-        let mu_comp = self
-            .chemical_potential
-            .to_reduced(U::reference_molar_energy())?
-            / temperature
-            - lambda_de_broglie;
-        let chemical_potential = self.dft.component_index.mapv(|i| mu_comp[i]);
+        let chemical_potential = self.reduced_chemical_potential()?;
         let mut bulk = self.bulk.clone();
 
         // Allocate residual vectors
@@ -473,17 +474,17 @@ where
         // Read from profile
         let temperature = self.temperature.to_reduced(U::reference_temperature())?;
         let mut density = self.density.to_reduced(U::reference_density())?;
-        let lambda_de_broglie = self
-            .dft
-            .functional
-            .ideal_gas()
-            .de_broglie_wavelength(temperature, self.bulk.eos.components());
-        let mut mu_comp = self
-            .chemical_potential
-            .to_reduced(U::reference_molar_energy())?
-            / temperature
-            - lambda_de_broglie;
-        let mut chemical_potential = self.dft.component_index.mapv(|i| mu_comp[i]);
+        // let lambda_de_broglie = self
+        //     .dft
+        //     .functional
+        //     .ideal_gas()
+        //     .de_broglie_wavelength(temperature, self.bulk.eos.components());
+        // let mut mu_comp = self
+        //     .chemical_potential
+        //     .to_reduced(U::reference_molar_energy())?
+        //     / temperature
+        //     - lambda_de_broglie;
+        let mut chemical_potential = self.reduced_chemical_potential()?;
         let mut bulk = self.bulk.clone();
 
         // initialize x-vector
@@ -529,10 +530,6 @@ where
 
         // Update profile
         self.density = density * U::reference_density();
-        for (s, &c) in self.dft.component_index.iter().enumerate() {
-            mu_comp[c] = chemical_potential[s];
-        }
-        self.chemical_potential = mu_comp * temperature * U::reference_molar_energy();
         self.bulk = bulk;
 
         Ok(())

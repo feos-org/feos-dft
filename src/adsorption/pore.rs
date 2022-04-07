@@ -164,7 +164,6 @@ where
 
     pub fn update_bulk(mut self, bulk: &State<U, DFT<F>>) -> Self {
         self.profile.bulk = bulk.clone();
-        self.profile.chemical_potential = bulk.chemical_potential(Contributions::Total);
         self.grand_potential = None;
         self.interfacial_tension = None;
         self
