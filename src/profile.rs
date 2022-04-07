@@ -474,16 +474,6 @@ where
         // Read from profile
         let temperature = self.temperature.to_reduced(U::reference_temperature())?;
         let mut density = self.density.to_reduced(U::reference_density())?;
-        // let lambda_de_broglie = self
-        //     .dft
-        //     .functional
-        //     .ideal_gas()
-        //     .de_broglie_wavelength(temperature, self.bulk.eos.components());
-        // let mut mu_comp = self
-        //     .chemical_potential
-        //     .to_reduced(U::reference_molar_energy())?
-        //     / temperature
-        //     - lambda_de_broglie;
         let mut chemical_potential = self.reduced_chemical_potential()?;
         let mut bulk = self.bulk.clone();
 
