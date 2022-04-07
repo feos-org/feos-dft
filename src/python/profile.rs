@@ -81,7 +81,7 @@ macro_rules! impl_profile {
 
             #[getter]
             fn get_chemical_potential(&self) -> PySIArray1 {
-                PySIArray1::from(self.0.profile.chemical_potential.clone())
+                PySIArray1::from(self.0.profile.chemical_potential())
             }
 
             #[getter]
