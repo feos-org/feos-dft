@@ -121,9 +121,6 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
 
 /// A general Helmholtz energy functional.
 pub trait HelmholtzEnergyFunctional: Sized {
-    /// Return the number of components of the Helmholtz energy functional.
-    fn components(&self) -> usize;
-
     /// Return a slice of [FunctionalContribution]s.
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>];
 
@@ -165,9 +162,9 @@ pub trait HelmholtzEnergyFunctional: Sized {
     /// Return the chain length parameter $m$.
     ///
     /// Overwrite this, if the functional describes non-spherical
-    /// moelcules using a homosegmented approach.
+    /// molecules using a homosegmented approach.
     fn m(&self) -> Cow<Array1<f64>> {
-        Cow::Owned(Array1::ones(self.components()))
+        Cow::Owned(Array1::ones(self.component_index().len()))
     }
 
     /// Return the component index for every segment.

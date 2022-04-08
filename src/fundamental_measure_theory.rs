@@ -7,6 +7,7 @@ use crate::weight_functions::{WeightFunction, WeightFunctionInfo, WeightFunction
 use feos_core::EosResult;
 use ndarray::*;
 use num_dual::DualNum;
+use std::borrow::Cow;
 use std::f64::consts::PI;
 use std::fmt;
 use std::rc::Rc;
@@ -303,10 +304,6 @@ impl FMTFunctional {
 }
 
 impl HelmholtzEnergyFunctional for FMTFunctional {
-    fn components(&self) -> usize {
-        self.properties.sigma.len()
-    }
-
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>] {
         &self.contributions
     }
@@ -321,6 +318,10 @@ impl HelmholtzEnergyFunctional for FMTFunctional {
 
     fn compute_max_density(&self, moles: &Array1<f64>) -> f64 {
         moles.sum() / (moles * &self.properties.sigma).sum() * 1.2
+    }
+
+    fn m(&self) -> Cow<Array1<f64>> {
+        Cow::Owned(Array1::ones(self.properties.sigma.len()))
     }
 }
 
