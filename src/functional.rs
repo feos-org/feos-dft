@@ -18,59 +18,34 @@ use std::ops::{AddAssign, Deref, MulAssign};
 use std::rc::Rc;
 
 /// Wrapper struct for the [HelmholtzEnergyFunctional] trait.
+///
+/// Needed (for now) to generically implement the `EquationOfState`
+/// trait for Helmholtz energy functionals.
 #[derive(Clone)]
-pub struct DFT<T>(T);
-//  {
-// /// Helmholtz energy functional
-// pub functional: T,
-// /// map segment -> component
-// pub component_index: Array1<usize>,
-// /// chain lengths of individual components
-// pub m: Array1<f64>,
-// /// ideal chain contribution
-// pub ideal_chain_contribution: IdealChainContribution,
-// }
+pub struct DFT<F>(F);
 
-impl<T> From<T> for DFT<T> {
-    fn from(t: T) -> Self {
-        Self(t)
+impl<F> From<F> for DFT<F> {
+    fn from(functional: F) -> Self {
+        Self(functional)
     }
 }
 
-impl<T> Deref for DFT<T> {
-    type Target = T;
-    fn deref(&self) -> &T {
+impl<F> DFT<F> {
+    pub fn into<F2: From<F>>(self) -> DFT<F2> {
+        DFT(self.0.into())
+    }
+}
+
+impl<F> Deref for DFT<F> {
+    type Target = F;
+    fn deref(&self) -> &F {
         &self.0
     }
 }
 
-// impl<T> DFT<T> {
-//     /// Create a new DFT struct for a homosegmented Helmholtz energy functional.
-//     pub fn new_homosegmented(functional: T, m: &Array1<f64>) -> Self {
-//         let component_index = Array1::from_shape_fn(m.len(), |i| i);
-//         Self::new(functional, &component_index, m)
-//     }
-
-//     /// Create a new DFT struct for a heterosegmented Helmholtz energy functional.
-//     pub fn new_heterosegmented(functional: T, component_index: &Array1<usize>) -> Self {
-//         let m = Array1::ones(component_index.len());
-//         Self::new(functional, component_index, &m)
-//     }
-
-//     /// Create a new DFT struct for a general Helmholtz energy functional.
-//     pub fn new(functional: T, component_index: &Array1<usize>, m: &Array1<f64>) -> Self {
-//         Self {
-//             functional,
-//             component_index: component_index.clone(),
-//             ideal_chain_contribution: IdealChainContribution::new(component_index, m),
-//         }
-//     }
-// }
-
 impl<T: MolarWeight<U>, U: EosUnit> MolarWeight<U> for DFT<T> {
     fn molar_weight(&self) -> QuantityArray1<U> {
-        let f: &T = self;
-        f.molar_weight()
+        (self as &T).molar_weight()
     }
 }
 
@@ -93,13 +68,11 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
     }
 
     fn subset(&self, component_list: &[usize]) -> Self {
-        let f: &T = self;
-        f.subset(component_list)
+        (self as &T).subset(component_list)
     }
 
     fn compute_max_density(&self, moles: &Array1<f64>) -> f64 {
-        let f: &T = self;
-        f.compute_max_density(moles)
+        (self as &T).compute_max_density(moles)
     }
 
     fn residual(&self) -> &[Box<dyn HelmholtzEnergy>] {
@@ -142,13 +115,15 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
     }
 
     fn ideal_gas(&self) -> &dyn IdealGasContribution {
-        let f: &T = self;
-        f.ideal_gas()
+        (self as &T).ideal_gas()
     }
 }
 
 /// A general Helmholtz energy functional.
 pub trait HelmholtzEnergyFunctional: Sized {
+    /// Return the number of components of the Helmholtz energy functional.
+    fn components(&self) -> usize;
+
     /// Return a slice of [FunctionalContribution]s.
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>];
 
@@ -187,7 +162,17 @@ pub trait HelmholtzEnergyFunctional: Sized {
             .collect()
     }
 
-    fn m(&self) -> Cow<Array1<f64>>;
+    /// Return the chain length parameter $m$.
+    ///
+    /// Overwrite this, if the functional describes non-spherical
+    /// moelcules using a homosegmented approach.
+    fn m(&self) -> Cow<Array1<f64>> {
+        Cow::Owned(Array1::ones(self.components()))
+    }
+
+    /// Return the component index for every segment.
+    ///
+    /// Overwrite this, if the functional consists of heterosegmented chains.
     fn component_index(&self) -> Cow<Array1<usize>> {
         Cow::Owned(Array1::from_shape_fn(self.m().len(), |i| i))
     }

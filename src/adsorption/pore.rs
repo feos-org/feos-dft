@@ -11,7 +11,6 @@ use ndarray::Axis as Axis_nd;
 use ndarray::Zip;
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray, QuantityArray2, QuantityArray4, QuantityScalar};
-use std::borrow::Cow;
 use std::rc::Rc;
 
 const POTENTIAL_OFFSET: f64 = 2.0;
@@ -458,6 +457,10 @@ impl Helium {
 }
 
 impl HelmholtzEnergyFunctional for Helium {
+    fn components(&self) -> usize {
+        1
+    }
+
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>] {
         &[]
     }
@@ -468,10 +471,6 @@ impl HelmholtzEnergyFunctional for Helium {
 
     fn compute_max_density(&self, _: &Array1<f64>) -> f64 {
         1.0
-    }
-
-    fn m(&self) -> Cow<Array<f64, Ix1>> {
-        Cow::Owned(Array1::ones(1))
     }
 }
 
