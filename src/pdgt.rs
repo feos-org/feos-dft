@@ -162,13 +162,13 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         let mut delta_omega = Array::zeros(n_grid) * U::reference_pressure();
         let mut influence_diagonal =
             Array::zeros(density.raw_dim()) * U::reference_influence_parameter();
-        for contribution in self.functional.contributions() {
+        for contribution in self.contributions() {
             let (f, c) = contribution.influence_diagonal(vle.vapor().temperature, &density)?;
             delta_omega += &f;
             influence_diagonal += &c;
         }
         delta_omega += &self
-            .ideal_chain_contribution
+            .ideal_chain_contribution()
             .helmholtz_energy_density::<_, Ix1>(vle.vapor().temperature, &density)?;
 
         let t = vle

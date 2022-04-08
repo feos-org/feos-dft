@@ -1,6 +1,6 @@
 //! Helmholtz energy functionals from fundamental measure theory.
 use crate::adsorption::FluidParameters;
-use crate::functional::{HelmholtzEnergyFunctional, DFT};
+use crate::functional::{HelmholtzEnergyFunctional, MoleculeShape, DFT};
 use crate::functional_contribution::*;
 use crate::solvation::PairPotential;
 use crate::weight_functions::{WeightFunction, WeightFunctionInfo, WeightFunctionShape};
@@ -293,14 +293,12 @@ impl FMTFunctional {
         });
         let contributions: Vec<Box<dyn FunctionalContribution>> =
             vec![Box::new(FMTContribution::new(&properties, version))];
-        DFT::new_homosegmented(
-            Self {
-                properties,
-                contributions,
-                version,
-            },
-            &Array1::ones(sigma.len()),
-        )
+        (Self {
+            properties,
+            contributions,
+            version,
+        })
+        .into()
     }
 }
 
@@ -319,6 +317,10 @@ impl HelmholtzEnergyFunctional for FMTFunctional {
 
     fn compute_max_density(&self, moles: &Array1<f64>) -> f64 {
         moles.sum() / (moles * &self.properties.sigma).sum() * 1.2
+    }
+
+    fn molecule_shape(&self) -> MoleculeShape {
+        MoleculeShape::Spherical(self.properties.sigma.len())
     }
 }
 
@@ -341,9 +343,5 @@ impl FluidParameters for FMTFunctional {
 
     fn sigma_ff(&self) -> &Array1<f64> {
         &self.properties.sigma
-    }
-
-    fn m(&self) -> Array1<f64> {
-        Array::ones(self.properties.sigma.len())
     }
 }

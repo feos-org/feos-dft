@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DFTSolver` now uses `Verbosity` instead of a `bool` to control its output. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - `SurfaceTensionDiagram` now uses the new `StateVec` struct to access properties of the bulk phases. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - `Pore1D::initialize` and `Pore3D::initialize` now accept initial values for the density profiles as optional arguments. [#24](https://github.com/feos-org/feos-dft/pull/24)
+- Internally restructured the `DFT` structure to avoid redundant data. [#24](https://github.com/feos-org/feos-dft/pull/24)
+- Removed the `m` function in `FluidParameters`, it is instead inferred from `HelmholtzEnergyFunctional` which is now a supertrait of `FluidParameters`. [#24](https://github.com/feos-org/feos-dft/pull/24)
 
 ### Packaging
 - Updated `pyo3` and `numpy` dependencies to 0.16.

@@ -34,7 +34,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> SurfaceTensionDiagram<U, F> {
                 )
             } else {
                 // initialize with pDGT for single segments and tanh for mixtures and segment DFT
-                if vle.vapor().eos.component_index.len() == 1 {
+                if vle.vapor().eos.component_index().len() == 1 {
                     PlanarInterface::from_pdgt(vle, n_grid)
                 } else {
                     PlanarInterface::from_tanh(
