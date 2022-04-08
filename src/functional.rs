@@ -189,7 +189,7 @@ pub trait HelmholtzEnergyFunctional: Sized {
 
     fn m(&self) -> Cow<Array1<f64>>;
     fn component_index(&self) -> Cow<Array1<usize>> {
-        Cow::Owned(Array::ones(self.m().len()))
+        Cow::Owned(Array1::from_shape_fn(self.m().len(), |i| i))
     }
 
     fn ideal_chain_contribution(&self) -> IdealChainContribution {
