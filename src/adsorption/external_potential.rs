@@ -1,4 +1,5 @@
 use crate::adsorption::fea_potential::calculate_fea_potential;
+use crate::functional::HelmholtzEnergyFunctional;
 use crate::geometry::Geometry;
 use feos_core::EosUnit;
 use libc::c_double;
@@ -55,10 +56,9 @@ pub enum ExternalPotential<U> {
 }
 
 /// Parameters of the fluid required to evaluate the external potential.
-pub trait FluidParameters {
+pub trait FluidParameters: HelmholtzEnergyFunctional {
     fn epsilon_k_ff(&self) -> Array1<f64>;
     fn sigma_ff(&self) -> &Array1<f64>;
-    fn m(&self) -> Array1<f64>;
 }
 
 impl<U: EosUnit> ExternalPotential<U> {

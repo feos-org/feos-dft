@@ -344,8 +344,4 @@ impl FluidParameters for FMTFunctional {
     fn sigma_ff(&self) -> &Array1<f64> {
         &self.properties.sigma
     }
-
-    fn m(&self) -> Array1<f64> {
-        Array::ones(self.properties.sigma.len())
-    }
 }

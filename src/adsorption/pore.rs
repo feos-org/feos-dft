@@ -482,8 +482,4 @@ impl FluidParameters for Helium {
     fn sigma_ff(&self) -> &Array1<f64> {
         &self.sigma
     }
-
-    fn m(&self) -> Array1<f64> {
-        arr1(&[1.0])
-    }
 }
