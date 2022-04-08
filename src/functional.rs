@@ -119,10 +119,23 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
     }
 }
 
+/// Different representations for molecules within DFT.
+pub enum MoleculeShape<'a> {
+    /// For spherical molecules, the number of components.
+    Spherical(usize),
+    /// For non-spherical molecules in a homosegmented approach, the chain length parameter $m$.
+    NonSpherical(&'a Array1<f64>),
+    /// For non-spherical molecules in a heterosegmented approach, the component index for every segment.
+    Heterosegmented(&'a Array1<usize>),
+}
+
 /// A general Helmholtz energy functional.
 pub trait HelmholtzEnergyFunctional: Sized {
     /// Return a slice of [FunctionalContribution]s.
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>];
+
+    /// Return the shape of the molecules and the necessary specifications.
+    fn molecule_shape(&self) -> MoleculeShape;
 
     /// Return a functional for the specified subset of components.
     fn subset(&self, component_list: &[usize]) -> DFT<Self>;
@@ -159,19 +172,22 @@ pub trait HelmholtzEnergyFunctional: Sized {
             .collect()
     }
 
-    /// Return the chain length parameter $m$.
-    ///
-    /// Overwrite this, if the functional describes non-spherical
-    /// molecules using a homosegmented approach.
     fn m(&self) -> Cow<Array1<f64>> {
-        Cow::Owned(Array1::ones(self.component_index().len()))
+        match self.molecule_shape() {
+            MoleculeShape::Spherical(n) => Cow::Owned(Array1::ones(n)),
+            MoleculeShape::NonSpherical(m) => Cow::Borrowed(m),
+            MoleculeShape::Heterosegmented(component_index) => {
+                Cow::Owned(Array1::ones(component_index.len()))
+            }
+        }
     }
 
-    /// Return the component index for every segment.
-    ///
-    /// Overwrite this, if the functional consists of heterosegmented chains.
     fn component_index(&self) -> Cow<Array1<usize>> {
-        Cow::Owned(Array1::from_shape_fn(self.m().len(), |i| i))
+        match self.molecule_shape() {
+            MoleculeShape::Spherical(n) => Cow::Owned(Array1::from_shape_fn(n, |i| i)),
+            MoleculeShape::NonSpherical(m) => Cow::Owned(Array1::from_shape_fn(m.len(), |i| i)),
+            MoleculeShape::Heterosegmented(component_index) => Cow::Borrowed(component_index),
+        }
     }
 
     fn ideal_chain_contribution(&self) -> IdealChainContribution {

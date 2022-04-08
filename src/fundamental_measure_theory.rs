@@ -1,13 +1,12 @@
 //! Helmholtz energy functionals from fundamental measure theory.
 use crate::adsorption::FluidParameters;
-use crate::functional::{HelmholtzEnergyFunctional, DFT};
+use crate::functional::{HelmholtzEnergyFunctional, MoleculeShape, DFT};
 use crate::functional_contribution::*;
 use crate::solvation::PairPotential;
 use crate::weight_functions::{WeightFunction, WeightFunctionInfo, WeightFunctionShape};
 use feos_core::EosResult;
 use ndarray::*;
 use num_dual::DualNum;
-use std::borrow::Cow;
 use std::f64::consts::PI;
 use std::fmt;
 use std::rc::Rc;
@@ -320,8 +319,8 @@ impl HelmholtzEnergyFunctional for FMTFunctional {
         moles.sum() / (moles * &self.properties.sigma).sum() * 1.2
     }
 
-    fn m(&self) -> Cow<Array1<f64>> {
-        Cow::Owned(Array1::ones(self.properties.sigma.len()))
+    fn molecule_shape(&self) -> MoleculeShape {
+        MoleculeShape::Spherical(self.properties.sigma.len())
     }
 }
 

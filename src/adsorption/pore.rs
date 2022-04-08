@@ -1,6 +1,6 @@
 use crate::adsorption::{ExternalPotential, FluidParameters};
 use crate::convolver::ConvolverFFT;
-use crate::functional::{HelmholtzEnergyFunctional, DFT};
+use crate::functional::{HelmholtzEnergyFunctional, MoleculeShape, DFT};
 use crate::functional_contribution::FunctionalContribution;
 use crate::geometry::{Axis, Geometry, Grid};
 use crate::profile::{DFTProfile, CUTOFF_RADIUS, MAX_POTENTIAL};
@@ -11,7 +11,6 @@ use ndarray::Axis as Axis_nd;
 use ndarray::Zip;
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray, QuantityArray2, QuantityArray4, QuantityScalar};
-use std::borrow::Cow;
 use std::rc::Rc;
 
 const POTENTIAL_OFFSET: f64 = 2.0;
@@ -470,8 +469,8 @@ impl HelmholtzEnergyFunctional for Helium {
         1.0
     }
 
-    fn m(&self) -> Cow<Array<f64, Ix1>> {
-        Cow::Owned(Array1::ones(1))
+    fn molecule_shape(&self) -> MoleculeShape {
+        MoleculeShape::Spherical(1)
     }
 }
 
