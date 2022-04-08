@@ -98,7 +98,7 @@ impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional> DFTSpecification<U,
         z: &Array1<f64>,
         _: &State<U, DFT<F>>,
     ) -> EosResult<Array1<f64>> {
-        let m = &profile.dft.m;
+        let m: &Array1<f64> = &profile.dft.m();
         Ok(match self {
             Self::ChemicalPotential => chemical_potential.clone(),
             Self::Moles { moles } => (moles / z).mapv(f64::ln) * m,
@@ -195,7 +195,7 @@ where
 
         // initialize external potential
         let external_potential = external_potential.unwrap_or_else(|| {
-            let mut n_grid = vec![dft.component_index.len()];
+            let mut n_grid = vec![dft.component_index().len()];
             grid.axes()
                 .iter()
                 .for_each(|&ax| n_grid.push(ax.grid.len()));
@@ -213,7 +213,7 @@ where
                 * (-&external_potential).mapv(f64::exp);
             let mut density = Array::zeros(external_potential.raw_dim());
             let bulk_density = bulk.partial_density.to_reduced(U::reference_density())?;
-            for (s, &c) in dft.component_index.iter().enumerate() {
+            for (s, &c) in dft.component_index().iter().enumerate() {
                 density.index_axis_mut(Axis_nd(0), s).assign(
                     &(bonds.index_axis(Axis_nd(0), s).map(|is| is.min(1.0)) * bulk_density[c]),
                 );
@@ -287,7 +287,7 @@ where
         let mut d = rho.raw_dim();
         d[0] = self.dft.components();
         let mut density_comps = Array::zeros(d);
-        for (i, &j) in self.dft.component_index.iter().enumerate() {
+        for (i, &j) in self.dft.component_index().iter().enumerate() {
             density_comps
                 .index_axis_mut(Axis_nd(0), j)
                 .assign(&rho.index_axis(Axis_nd(0), i));
@@ -312,7 +312,6 @@ where
             .to_reduced(U::reference_temperature())?;
         let lambda_de_broglie = self
             .dft
-            .functional
             .ideal_gas()
             .de_broglie_wavelength(temperature, self.bulk.eos.components());
         let mu_comp = self
@@ -320,7 +319,7 @@ where
             .to_reduced(U::reference_molar_energy())?
             / temperature
             - lambda_de_broglie;
-        Ok(self.dft.component_index.mapv(|c| mu_comp[c]))
+        Ok(self.dft.component_index().mapv(|c| mu_comp[c]))
     }
 }
 
@@ -399,11 +398,10 @@ where
         // Update bulk state
         let lambda_de_broglie = self
             .dft
-            .functional
             .ideal_gas()
             .de_broglie_wavelength(temperature, bulk.eos.components());
         let mut mu_comp = Array::zeros(bulk.eos.components());
-        for (s, &c) in self.dft.component_index.iter().enumerate() {
+        for (s, &c) in self.dft.component_index().iter().enumerate() {
             mu_comp[c] = chemical_potential[s];
         }
         bulk.update_chemical_potential(
@@ -424,7 +422,7 @@ where
             .bond_integrals(temperature, &dfdrho, &self.convolver);
 
         // Euler-Lagrange equation
-        let m = &self.dft.m;
+        let m = &self.dft.m();
         res_rho
             .outer_iter_mut()
             .zip(dfdrho.outer_iter())
@@ -547,7 +545,7 @@ where
     pub fn entropy_density(&self, contributions: Contributions) -> EosResult<QuantityArray<U, D>> {
         // initialize convolver
         let t = self.temperature.to_reduced(U::reference_temperature())?;
-        let functional_contributions = self.dft.functional.contributions();
+        let functional_contributions = self.dft.contributions();
         let weight_functions: Vec<WeightFunctionInfo<Dual64>> = functional_contributions
             .iter()
             .map(|c| c.weight_functions(Dual64::from(t).derive()))
@@ -569,7 +567,7 @@ where
     pub fn internal_energy(&self, contributions: Contributions) -> EosResult<QuantityScalar<U>> {
         // initialize convolver
         let t = self.temperature.to_reduced(U::reference_temperature())?;
-        let functional_contributions = self.dft.functional.contributions();
+        let functional_contributions = self.dft.contributions();
         let weight_functions: Vec<WeightFunctionInfo<Dual64>> = functional_contributions
             .iter()
             .map(|c| c.weight_functions(Dual64::from(t).derive()))

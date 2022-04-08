@@ -46,7 +46,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // calculate external potential
         let t = bulk.temperature.to_reduced(U::reference_temperature())?;
-        let mut external_potential = dft.functional.pair_potential(&axis.grid) / t;
+        let mut external_potential = dft.pair_potential(&axis.grid) / t;
         external_potential.map_inplace(|x| {
             if *x > MAX_POTENTIAL {
                 *x = MAX_POTENTIAL
@@ -55,7 +55,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // initialize convolver
         let grid = Grid::Spherical(axis);
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, Some(1));
 
         Ok(Self {

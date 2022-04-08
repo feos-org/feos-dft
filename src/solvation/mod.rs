@@ -71,7 +71,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> SolvationProfil
         cutoff_radius: Option<QuantityScalar<U>>,
         potential_cutoff: Option<f64>,
     ) -> EosResult<Self> {
-        let dft = &bulk.eos;
+        let dft: &F = &bulk.eos;
 
         let system_size = system_size.unwrap_or([40.0 * U::reference_length(); 3]);
 
@@ -104,7 +104,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> SolvationProfil
 
         // calculate external potential
         let external_potential = external_potential_3d(
-            &dft.functional,
+            dft,
             [&x, &y, &z],
             coordinates,
             sigma_ss,
@@ -116,7 +116,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + FluidParameters> SolvationProfil
 
         // initialize convolver
         let grid = Grid::Cartesian3(x, y, z);
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, Some(1));
 
         Ok(Self {

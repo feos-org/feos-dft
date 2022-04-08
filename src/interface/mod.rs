@@ -78,7 +78,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
             .vapor()
             .temperature
             .to_reduced(U::reference_temperature())?;
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, None);
 
         Ok(Self {
@@ -98,7 +98,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
         let mut profile = Self::new(vle, n_grid, l_grid)?;
 
         // calculate segment indices
-        let indices = &profile.profile.dft.component_index;
+        let indices = &profile.profile.dft.component_index();
 
         // calculate density profile
         let z0 = 0.5 * l_grid.to_reduced(U::reference_length())?;
@@ -125,8 +125,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
     pub fn from_pdgt(vle: &PhaseEquilibrium<U, DFT<F>, 2>, n_grid: usize) -> EosResult<Self> {
         let dft = &vle.vapor().eos;
 
-        if dft.component_index.len() != 1 {
-            panic!("Initialization from pDGT not possible for segment DFT");
+        if dft.component_index().len() != 1 {
+            panic!("Initialization from pDGT not possible for segment DFT or mixtures");
         }
 
         // calculate density profile from pDGT
@@ -174,7 +174,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
 impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
     pub fn shift_equimolar_inplace(&mut self) {
         let s = self.profile.density.shape();
-        let m = &self.profile.dft.m;
+        let m = &self.profile.dft.m();
         let mut rho_l = 0.0 * U::reference_density();
         let mut rho_v = 0.0 * U::reference_density();
         let mut rho = Array::zeros(s[1]) * U::reference_density();
@@ -249,7 +249,7 @@ fn interp_symmetric<U: EosUnit, F: HelmholtzEnergyFunctional>(
             .unwrap()
             - 0.5
     });
-    let segments = vle_pdgt.vapor().eos.component_index.len();
+    let segments = vle_pdgt.vapor().eos.component_index().len();
     let mut reduced_density = interp(
         &z_pdgt.to_reduced(U::reference_length())?,
         &reduced_density,
