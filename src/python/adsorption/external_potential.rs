@@ -185,13 +185,15 @@ impl PyExternalPotential {
     ///     The size of the unit cell.
     /// n_grid : [int; 2]
     ///     The number of grid points in each direction.
+    /// cutoff_radius : float, optional
+    ///     The cutoff used in the calculation of fluid/wall interactions.
     /// Returns
     /// -------
     /// ExternalPotential
     ///
     #[staticmethod]
     #[pyo3(
-        text_signature = "(coordinates, sigma_ss, epsilon_k_ss, pore_center, system_size, n_grid)"
+        text_signature = "(coordinates, sigma_ss, epsilon_k_ss, pore_center, system_size, n_grid, cutoff_radius=None)"
     )]
     pub fn FreeEnergyAveraged(
         coordinates: &PySIArray2,
@@ -200,6 +202,7 @@ impl PyExternalPotential {
         pore_center: [f64; 3],
         system_size: [PySINumber; 3],
         n_grid: [usize; 2],
+        cutoff_radius: Option<f64>,
     ) -> Self {
         Self(ExternalPotential::FreeEnergyAveraged {
             coordinates: coordinates.clone().into(),
@@ -212,6 +215,7 @@ impl PyExternalPotential {
                 system_size[2].into(),
             ],
             n_grid,
+            cutoff_radius,
         })
     }
 }

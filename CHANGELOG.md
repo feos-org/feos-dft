@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Pore1D::initialize` and `Pore3D::initialize` now accept initial values for the density profiles as optional arguments. [#24](https://github.com/feos-org/feos-dft/pull/24)
 - Internally restructured the `DFT` structure to avoid redundant data. [#24](https://github.com/feos-org/feos-dft/pull/24)
 - Removed the `m` function in `FluidParameters`, it is instead inferred from `HelmholtzEnergyFunctional` which is now a supertrait of `FluidParameters`. [#24](https://github.com/feos-org/feos-dft/pull/24)
+- Added optional field `cutoff_radius` to `ExternalPotential::FreeEnergyAveraged`. [#25](https://github.com/feos-org/feos-dft/pull/25)
 
 ### Packaging
 - Updated `pyo3` and `numpy` dependencies to 0.16.
