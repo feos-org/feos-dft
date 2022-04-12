@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2022-04-??
+## [0.2.0] - 2022-04-12
+### Added
+- Added `grand_potential_density` getter for DFT profiles in Python. [#22](https://github.com/feos-org/feos-dft/pull/22)
+
 ### Changed
 - Renamed `AxisGeometry` to `Geometry`. [#19](https://github.com/feos-org/feos-dft/pull/19)
 - Removed `PyGeometry` and `PyFMTVersion` in favor of a simpler implementation using `PyO3`'s new `#[pyclass]` for fieldless enums feature. [#19](https://github.com/feos-org/feos-dft/pull/19)
