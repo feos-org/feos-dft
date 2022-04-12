@@ -46,7 +46,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // calculate external potential
         let t = bulk.temperature.to_reduced(U::reference_temperature())?;
-        let mut external_potential = dft.functional.pair_potential(&axis.grid) / t;
+        let mut external_potential = dft.pair_potential(&axis.grid) / t;
         external_potential.map_inplace(|x| {
             if *x > MAX_POTENTIAL {
                 *x = MAX_POTENTIAL
@@ -55,11 +55,11 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // initialize convolver
         let grid = Grid::Spherical(axis);
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, Some(1));
 
         Ok(Self {
-            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential))?,
+            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential), None)?,
             pair_correlation_function: None,
             self_solvation_free_energy: None,
             structure_factor: None,
@@ -76,11 +76,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // calculate self solvation free energy
         self.self_solvation_free_energy = Some(self.profile.integrate(
-            &(self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )? + self.profile.bulk.pressure(Contributions::Total)),
+            &(self.profile.grand_potential_density()?
+                + self.profile.bulk.pressure(Contributions::Total)),
         ));
 
         // calculate structure factor

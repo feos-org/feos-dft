@@ -1,4 +1,4 @@
-use feos_core::{EosError, EosResult};
+use feos_core::{log_iter, EosError, EosResult, Verbosity};
 use ndarray::prelude::*;
 use num_dual::linalg::{norm, LU};
 use std::collections::VecDeque;
@@ -45,24 +45,24 @@ enum DFTAlgorithm {
 #[derive(Clone)]
 pub struct DFTSolver {
     parameters: Vec<SolverParameter>,
-    output: bool,
+    pub verbosity: Verbosity,
 }
 
 impl Default for DFTSolver {
     fn default() -> Self {
         Self {
             parameters: vec![DEFAULT_PARAMS_ANDERSON_LOG, DEFAULT_PARAMS_ANDERSON],
-            output: false,
+            verbosity: Verbosity::None,
         }
     }
 }
 
 impl DFTSolver {
     /// Create a new empty `DFTSolver` object.
-    pub fn new() -> Self {
+    pub fn new(verbosity: Verbosity) -> Self {
         Self {
             parameters: Vec::new(),
-            output: false,
+            verbosity,
         }
     }
 
@@ -110,23 +110,15 @@ impl DFTSolver {
         self
     }
 
-    /// Print the iteration to the console.
-    pub fn output(mut self) -> Self {
-        self.output = true;
-        self
-    }
-
     pub(crate) fn solve<F>(&self, x: &mut Array1<f64>, residual: &mut F) -> EosResult<(bool, usize)>
     where
         F: FnMut(&Array1<f64>, ArrayViewMut1<f64>, bool) -> EosResult<()>,
     {
-        if self.output {
-            println!("solver               | iter | residual ");
-        }
+        log_iter!(self.verbosity, "solver               | iter | residual ");
         let mut converged = false;
         let mut iterations = 0;
         for algorithm in &self.parameters {
-            let (c, i) = algorithm.solve(x, residual, self.output)?;
+            let (c, i) = algorithm.solve(x, residual, self.verbosity)?;
             converged = c;
             iterations += i;
         }
@@ -139,16 +131,16 @@ impl SolverParameter {
         &self,
         x: &mut Array1<f64>,
         residual: &mut F,
-        output: bool,
+        verbosity: Verbosity,
     ) -> EosResult<(bool, usize)>
     where
         F: FnMut(&Array1<f64>, ArrayViewMut1<f64>, bool) -> EosResult<()>,
     {
         match self.solver {
             DFTAlgorithm::PicardIteration(max_rel) => {
-                self.solve_picard(max_rel, x, residual, output)
+                self.solve_picard(max_rel, x, residual, verbosity)
             }
-            DFTAlgorithm::AndersonMixing(mmax) => self.solve_anderson(mmax, x, residual, output),
+            DFTAlgorithm::AndersonMixing(mmax) => self.solve_anderson(mmax, x, residual, verbosity),
         }
     }
 
@@ -157,14 +149,12 @@ impl SolverParameter {
         max_rel: f64,
         x: &mut Array1<f64>,
         residual: &mut F,
-        output: bool,
+        verbosity: Verbosity,
     ) -> EosResult<(bool, usize)>
     where
         F: FnMut(&Array1<f64>, ArrayViewMut1<f64>, bool) -> EosResult<()>,
     {
-        if output {
-            println!("{:-<43}", "");
-        }
+        log_iter!(verbosity, "{:-<43}", "");
         let mut resm = Array::zeros(x.raw_dim());
 
         for k in 1..=self.max_iter {
@@ -191,15 +181,14 @@ impl SolverParameter {
 
             // check for convergence
             let res = norm(&resm) / (resm.len() as f64).sqrt();
-            if output {
-                println!(
-                    "Picard iteration {:3} | {:>4} | {:.6e} | {}",
-                    if self.log { "log" } else { "" },
-                    k,
-                    res,
-                    beta_min.unwrap_or(self.beta)
-                );
-            }
+            log_iter!(
+                verbosity,
+                "Picard iteration {:3} | {:>4} | {:.6e} | {}",
+                if self.log { "log" } else { "" },
+                k,
+                res,
+                beta_min.unwrap_or(self.beta)
+            );
 
             if res.is_nan() {
                 return Err(EosError::IterationFailed(String::from("Picard Iteration")));
@@ -216,14 +205,12 @@ impl SolverParameter {
         mmax: usize,
         x: &mut Array1<f64>,
         residual: &mut F,
-        output: bool,
+        verbosity: Verbosity,
     ) -> EosResult<(bool, usize)>
     where
         F: FnMut(&Array1<f64>, ArrayViewMut1<f64>, bool) -> EosResult<()>,
     {
-        if output {
-            println!("{:-<43}", "");
-        }
+        log_iter!(verbosity, "{:-<43}", "");
         let mut resm = VecDeque::with_capacity(mmax);
         let mut xm = VecDeque::with_capacity(mmax);
         let mut r;
@@ -274,14 +261,13 @@ impl SolverParameter {
             // check for convergence
             let resv = &resm[m - 1];
             let res = norm(resv) / (resv.len() as f64).sqrt();
-            if output {
-                println!(
-                    "Anderson mixing {:3}  | {:>4} | {:.6e} ",
-                    if self.log { "log" } else { "" },
-                    k,
-                    res
-                );
-            }
+            log_iter!(
+                verbosity,
+                "Anderson mixing {:3}  | {:>4} | {:.6e} ",
+                if self.log { "log" } else { "" },
+                k,
+                res
+            );
 
             if res.is_nan() {
                 return Err(EosError::IterationFailed(String::from("Anderson Mixing")));

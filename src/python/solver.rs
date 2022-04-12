@@ -1,32 +1,27 @@
 use crate::DFTSolver;
+use feos_core::Verbosity;
 use pyo3::prelude::*;
 
 /// Settings for the DFT solver.
 ///
 /// Parameters
 /// ----------
-/// output: bool, optional
-///     Print the progress to the console.
+/// verbosity: Verbosity, optional
+///     The verbosity level of the solver.
 ///
 /// Returns
 /// -------
-/// empty solver: DFTSolver
+/// DFTSolver
 #[pyclass(name = "DFTSolver")]
 #[derive(Clone)]
-#[pyo3(text_signature = "(output=None)")]
+#[pyo3(text_signature = "(verbosity=None)")]
 pub struct PyDFTSolver(pub DFTSolver);
 
 #[pymethods]
 impl PyDFTSolver {
     #[new]
-    fn new(output: Option<bool>) -> Self {
-        let mut solver = DFTSolver::new();
-        if let Some(output) = output {
-            if output {
-                solver = solver.output();
-            }
-        }
-        Self(solver)
+    fn new(verbosity: Option<Verbosity>) -> Self {
+        Self(DFTSolver::new(verbosity.unwrap_or_default()))
     }
 
     /// The default solver.
@@ -82,6 +77,18 @@ impl PyDFTSolver {
         Self(solver)
     }
 
+    fn log_iter(&self) -> Self {
+        let mut solver = self.0.clone();
+        solver.verbosity = Verbosity::Iter;
+        Self(solver)
+    }
+
+    fn log_result(&self) -> Self {
+        let mut solver = self.0.clone();
+        solver.verbosity = Verbosity::Result;
+        Self(solver)
+    }
+
     /// Add Anderson mixing to the solver object.
     ///
     /// Parameters
@@ -130,10 +137,7 @@ impl PyDFTSolver {
     fn _repr_markdown_(&self) -> String {
         self.0._repr_markdown_()
     }
-}
 
-#[pyproto]
-impl pyo3::class::basic::PyObjectProtocol for PyDFTSolver {
     fn __repr__(&self) -> PyResult<String> {
         Ok(self.0.to_string())
     }

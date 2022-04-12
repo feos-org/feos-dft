@@ -34,10 +34,15 @@ macro_rules! impl_helmholtz_energy {
 
 impl_helmholtz_energy!(f64);
 impl_helmholtz_energy!(Dual64);
+impl_helmholtz_energy!(Dual<DualVec64<3>, f64>);
 impl_helmholtz_energy!(HyperDual64);
 impl_helmholtz_energy!(Dual3_64);
 impl_helmholtz_energy!(HyperDual<Dual64, f64>);
+impl_helmholtz_energy!(HyperDual<DualVec64<2>, f64>);
+impl_helmholtz_energy!(HyperDual<DualVec64<3>, f64>);
 impl_helmholtz_energy!(Dual3<Dual64, f64>);
+impl_helmholtz_energy!(Dual3<DualVec64<2>, f64>);
+impl_helmholtz_energy!(Dual3<DualVec64<3>, f64>);
 
 /// Individual functional contribution that can
 /// be evaluated using generalized (hyper) dual numbers.
@@ -69,10 +74,15 @@ pub trait FunctionalContributionDual<N: DualNum<f64>>: Display {
 pub trait FunctionalContribution:
     FunctionalContributionDual<f64>
     + FunctionalContributionDual<Dual64>
+    + FunctionalContributionDual<Dual<DualVec64<3>, f64>>
     + FunctionalContributionDual<HyperDual64>
     + FunctionalContributionDual<Dual3_64>
     + FunctionalContributionDual<HyperDual<Dual64, f64>>
+    + FunctionalContributionDual<HyperDual<DualVec64<2>, f64>>
+    + FunctionalContributionDual<HyperDual<DualVec64<3>, f64>>
     + FunctionalContributionDual<Dual3<Dual64, f64>>
+    + FunctionalContributionDual<Dual3<DualVec64<2>, f64>>
+    + FunctionalContributionDual<Dual3<DualVec64<3>, f64>>
     + Display
 {
     fn first_partial_derivatives(
@@ -147,10 +157,15 @@ pub trait FunctionalContribution:
 impl<T> FunctionalContribution for T where
     T: FunctionalContributionDual<f64>
         + FunctionalContributionDual<Dual64>
+        + FunctionalContributionDual<Dual<DualVec64<3>, f64>>
         + FunctionalContributionDual<HyperDual64>
         + FunctionalContributionDual<Dual3_64>
         + FunctionalContributionDual<HyperDual<Dual64, f64>>
+        + FunctionalContributionDual<HyperDual<DualVec64<2>, f64>>
+        + FunctionalContributionDual<HyperDual<DualVec64<3>, f64>>
         + FunctionalContributionDual<Dual3<Dual64, f64>>
+        + FunctionalContributionDual<Dual3<DualVec64<2>, f64>>
+        + FunctionalContributionDual<Dual3<DualVec64<3>, f64>>
         + Display
 {
 }

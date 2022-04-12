@@ -1,16 +1,16 @@
 use crate::adsorption::{ExternalPotential, FluidParameters};
 use crate::convolver::ConvolverFFT;
-use crate::functional::{HelmholtzEnergyFunctional, DFT};
+use crate::functional::{HelmholtzEnergyFunctional, MoleculeShape, DFT};
 use crate::functional_contribution::FunctionalContribution;
-use crate::geometry::{Axis, AxisGeometry, Grid};
+use crate::geometry::{Axis, Geometry, Grid};
 use crate::profile::{DFTProfile, CUTOFF_RADIUS, MAX_POTENTIAL};
 use crate::solver::DFTSolver;
 use feos_core::{Contributions, EosResult, EosUnit, State, StateBuilder};
 use ndarray::prelude::*;
 use ndarray::Axis as Axis_nd;
-use ndarray::Zip;
+use ndarray::{RemoveAxis, Zip};
 use ndarray_stats::QuantileExt;
-use quantity::{QuantityArray2, QuantityScalar};
+use quantity::{QuantityArray, QuantityArray2, QuantityArray4, QuantityScalar};
 use std::rc::Rc;
 
 const POTENTIAL_OFFSET: f64 = 2.0;
@@ -19,7 +19,7 @@ const DEFAULT_GRID_POINTS: usize = 2048;
 /// Parameters required to specify a 1D pore.
 pub struct Pore1D<U> {
     // functional: Rc<DFT<F>>,
-    geometry: AxisGeometry,
+    geometry: Geometry,
     pore_size: QuantityScalar<U>,
     potential: ExternalPotential<U>,
     n_grid: Option<usize>,
@@ -28,7 +28,7 @@ pub struct Pore1D<U> {
 
 impl<U: EosUnit> Pore1D<U> {
     pub fn new(
-        geometry: AxisGeometry,
+        geometry: Geometry,
         pore_size: QuantityScalar<U>,
         potential: ExternalPotential<U>,
         n_grid: Option<usize>,
@@ -83,6 +83,7 @@ pub trait PoreSpecification<U: EosUnit, D: Dimension> {
     fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
+        density: Option<&QuantityArray<U, D::Larger>>,
         external_potential: Option<&Array<f64, D::Larger>>,
     ) -> EosResult<PoreProfile<U, D, F>>;
 
@@ -96,9 +97,9 @@ pub trait PoreSpecification<U: EosUnit, D: Dimension> {
     {
         let bulk = StateBuilder::new(&Rc::new(Helium::new()))
             .temperature(298.0 * U::reference_temperature())
-            .volume(U::reference_volume())
+            .density(U::reference_density())
             .build()?;
-        let pore = self.initialize(&bulk, None)?;
+        let pore = self.initialize(&bulk, None, None)?;
         let pot = pore
             .profile
             .external_potential
@@ -132,22 +133,19 @@ impl<U: Copy, D: Dimension, F> Clone for PoreProfile<U, D, F> {
     }
 }
 
-impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional> PoreProfile<U, D, F>
+impl<U: EosUnit, D: Dimension + RemoveAxis + 'static, F: HelmholtzEnergyFunctional>
+    PoreProfile<U, D, F>
 where
     D::Larger: Dimension<Smaller = D>,
+    D::Smaller: Dimension<Larger = D>,
+    <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
 {
     pub fn solve_inplace(&mut self, solver: Option<&DFTSolver>, debug: bool) -> EosResult<()> {
         // Solve the profile
         self.profile.solve(solver, debug)?;
 
         // calculate grand potential density
-        let omega = self
-            .profile
-            .integrate(&self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )?);
+        let omega = self.profile.grand_potential()?;
         self.grand_potential = Some(omega);
 
         // calculate interfacial tension
@@ -174,19 +172,19 @@ impl<U: EosUnit> PoreSpecification<U, Ix1> for Pore1D<U> {
     fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
+        density: Option<&QuantityArray2<U>>,
         external_potential: Option<&Array2<f64>>,
     ) -> EosResult<PoreProfile1D<U, F>> {
-        let dft = &bulk.eos;
+        let dft: &F = &bulk.eos;
         let n_grid = self.n_grid.unwrap_or(DEFAULT_GRID_POINTS);
 
         let axis = match self.geometry {
-            AxisGeometry::Cartesian => {
-                let potential_offset =
-                    POTENTIAL_OFFSET * bulk.eos.functional.sigma_ff().max().unwrap();
+            Geometry::Cartesian => {
+                let potential_offset = POTENTIAL_OFFSET * bulk.eos.sigma_ff().max().unwrap();
                 Axis::new_cartesian(n_grid, 0.5 * self.pore_size, Some(potential_offset))?
             }
-            AxisGeometry::Polar => Axis::new_polar(n_grid, self.pore_size)?,
-            AxisGeometry::Spherical => Axis::new_spherical(n_grid, self.pore_size)?,
+            Geometry::Cylindrical => Axis::new_polar(n_grid, self.pore_size)?,
+            Geometry::Spherical => Axis::new_spherical(n_grid, self.pore_size)?,
         };
 
         // calculate external potential
@@ -196,7 +194,7 @@ impl<U: EosUnit> PoreSpecification<U, Ix1> for Pore1D<U> {
                     self.pore_size,
                     bulk.temperature,
                     &self.potential,
-                    &bulk.eos.functional,
+                    dft,
                     &axis,
                     self.potential_cutoff,
                 )
@@ -207,11 +205,11 @@ impl<U: EosUnit> PoreSpecification<U, Ix1> for Pore1D<U> {
         // initialize convolver
         let grid = Grid::new_1d(axis);
         let t = bulk.temperature.to_reduced(U::reference_temperature())?;
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, Some(1));
 
         Ok(PoreProfile {
-            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential))?,
+            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential), density)?,
             grand_potential: None,
             interfacial_tension: None,
         })
@@ -226,9 +224,10 @@ impl<U: EosUnit> PoreSpecification<U, Ix3> for Pore3D<U> {
     fn initialize<F: HelmholtzEnergyFunctional + FluidParameters>(
         &self,
         bulk: &State<U, DFT<F>>,
+        density: Option<&QuantityArray4<U>>,
         external_potential: Option<&Array4<f64>>,
     ) -> EosResult<PoreProfile3D<U, F>> {
-        let dft = &bulk.eos;
+        let dft: &F = &bulk.eos;
 
         // generate grid
         let x = Axis::new_cartesian(self.n_grid[0], self.system_size[0], None)?;
@@ -249,7 +248,7 @@ impl<U: EosUnit> PoreSpecification<U, Ix3> for Pore3D<U> {
         let external_potential = external_potential.map_or_else(
             || {
                 external_potential_3d(
-                    &bulk.eos.functional,
+                    dft,
                     [&x, &y, &z],
                     self.system_size,
                     coordinates,
@@ -265,11 +264,11 @@ impl<U: EosUnit> PoreSpecification<U, Ix3> for Pore3D<U> {
 
         // initialize convolver
         let grid = Grid::Periodical3(x, y, z);
-        let weight_functions = dft.functional.weight_functions(t);
+        let weight_functions = dft.weight_functions(t);
         let convolver = ConvolverFFT::plan(&grid, &weight_functions, Some(1));
 
         Ok(PoreProfile {
-            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential))?,
+            profile: DFTProfile::new(grid, convolver, bulk, Some(external_potential), density)?,
             grand_potential: None,
             interfacial_tension: None,
         })
@@ -290,13 +289,13 @@ fn external_potential_1d<U: EosUnit, P: FluidParameters>(
 ) -> EosResult<Array2<f64>> {
     let potential_cutoff = potential_cutoff.unwrap_or(MAX_POTENTIAL);
     let effective_pore_size = match axis.geometry {
-        AxisGeometry::Spherical => pore_width.to_reduced(U::reference_length())?,
-        AxisGeometry::Polar => pore_width.to_reduced(U::reference_length())?,
-        AxisGeometry::Cartesian => 0.5 * pore_width.to_reduced(U::reference_length())?,
+        Geometry::Spherical => pore_width.to_reduced(U::reference_length())?,
+        Geometry::Cylindrical => pore_width.to_reduced(U::reference_length())?,
+        Geometry::Cartesian => 0.5 * pore_width.to_reduced(U::reference_length())?,
     };
     let t = temperature.to_reduced(U::reference_temperature())?;
     let mut external_potential = match &axis.geometry {
-        AxisGeometry::Cartesian => {
+        Geometry::Cartesian => {
             potential.calculate_cartesian_potential(
                 &(effective_pore_size + &axis.grid),
                 fluid_parameters,
@@ -307,13 +306,13 @@ fn external_potential_1d<U: EosUnit, P: FluidParameters>(
                 t,
             )
         }
-        AxisGeometry::Spherical => potential.calculate_spherical_potential(
+        Geometry::Spherical => potential.calculate_spherical_potential(
             &axis.grid,
             effective_pore_size,
             fluid_parameters,
             t,
         ),
-        AxisGeometry::Polar => potential.calculate_cylindrical_potential(
+        Geometry::Cylindrical => potential.calculate_cylindrical_potential(
             &axis.grid,
             effective_pore_size,
             fluid_parameters,
@@ -450,7 +449,7 @@ impl Helium {
     fn new() -> DFT<Self> {
         let epsilon = arr1(&[EPSILON_HE]);
         let sigma = arr1(&[SIGMA_HE]);
-        DFT::new_homosegmented(Self { epsilon, sigma }, &Array1::ones(1))
+        (Self { epsilon, sigma }).into()
     }
 }
 
@@ -466,6 +465,10 @@ impl HelmholtzEnergyFunctional for Helium {
     fn compute_max_density(&self, _: &Array1<f64>) -> f64 {
         1.0
     }
+
+    fn molecule_shape(&self) -> MoleculeShape {
+        MoleculeShape::Spherical(1)
+    }
 }
 
 impl FluidParameters for Helium {
@@ -475,9 +478,5 @@ impl FluidParameters for Helium {
 
     fn sigma_ff(&self) -> &Array1<f64> {
         &self.sigma
-    }
-
-    fn m(&self) -> Array1<f64> {
-        arr1(&[1.0])
     }
 }

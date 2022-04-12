@@ -2,9 +2,9 @@
 use super::functional::{HelmholtzEnergyFunctional, DFT};
 use super::solver::DFTSolver;
 use feos_core::{
-    Contributions, EosError, EosResult, EosUnit, EquationOfState, StateBuilder, VLEOptions,
+    Contributions, EosError, EosResult, EosUnit, EquationOfState, SolverOptions, StateBuilder,
 };
-use ndarray::{arr1, Array1, Dimension, Ix1, Ix3};
+use ndarray::{arr1, Array1, Dimension, Ix1, Ix3, RemoveAxis};
 use quantity::{QuantityArray1, QuantityArray2, QuantityScalar};
 use std::rc::Rc;
 
@@ -55,12 +55,17 @@ where
         })
     }
 
-    fn equilibrium<D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters>(
+    fn equilibrium<
+        D: Dimension + RemoveAxis + 'static,
+        F: HelmholtzEnergyFunctional + FluidParameters,
+    >(
         &self,
         equilibrium: &Adsorption<U, D, F>,
     ) -> EosResult<(QuantityArray1<U>, QuantityArray1<U>)>
     where
         D::Larger: Dimension<Smaller = D>,
+        D::Smaller: Dimension<Larger = D>,
+        <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
     {
         let p_eq = equilibrium.pressure().get(0);
         match self {
@@ -111,10 +116,16 @@ pub type Adsorption1D<U, F> = Adsorption<U, Ix1, F>;
 /// Container structure for adsorption isotherms in 3D pores.
 pub type Adsorption3D<U, F> = Adsorption<U, Ix3, F>;
 
-impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters> Adsorption<U, D, F>
+impl<
+        U: EosUnit,
+        D: Dimension + RemoveAxis + 'static,
+        F: HelmholtzEnergyFunctional + FluidParameters,
+    > Adsorption<U, D, F>
 where
     QuantityScalar<U>: std::fmt::Display,
     D::Larger: Dimension<Smaller = D>,
+    D::Smaller: Dimension<Larger = D>,
+    <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
 {
     fn new<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
@@ -179,7 +190,7 @@ where
             pore,
             molefracs,
             solver,
-            VLEOptions::default(),
+            SolverOptions::default(),
         );
         if let Ok(equilibrium) = equilibrium {
             let pressure = pressure.equilibrium(&equilibrium)?;
@@ -259,13 +270,16 @@ where
             .pressure(pressure.get(0))
             .moles(&moles)
             .build()?;
-        if functional.components() > 1 && !bulk.is_stable(VLEOptions::default())? {
+        if functional.components() > 1 && !bulk.is_stable(SolverOptions::default())? {
             bulk = bulk
-                .tp_flash(None, VLEOptions::default(), None)?
+                .tp_flash(None, SolverOptions::default(), None)?
                 .vapor()
                 .clone();
         }
-        let external_potential = pore.initialize(&bulk, None)?.profile.external_potential;
+        let external_potential = pore
+            .initialize(&bulk, None, None)?
+            .profile
+            .external_potential;
 
         for i in 0..pressure.len() {
             let mut bulk = StateBuilder::new(functional)
@@ -273,17 +287,20 @@ where
                 .pressure(pressure.get(i))
                 .moles(&moles)
                 .build()?;
-            if functional.components() > 1 && !bulk.is_stable(VLEOptions::default())? {
+            if functional.components() > 1 && !bulk.is_stable(SolverOptions::default())? {
                 bulk = bulk
-                    .tp_flash(None, VLEOptions::default(), None)?
+                    .tp_flash(None, SolverOptions::default(), None)?
                     .vapor()
                     .clone();
             }
-            let mut p = pore.initialize(&bulk, Some(&external_potential))?;
-            let p2 = p.clone();
-            if let Some(Ok(l)) = profiles.last() {
-                p.profile.density = l.profile.density.clone();
-            }
+            let old_density = if let Some(Ok(l)) = profiles.last() {
+                Some(&l.profile.density)
+            } else {
+                None
+            };
+
+            let p = pore.initialize(&bulk, old_density, Some(&external_potential))?;
+            let p2 = pore.initialize(&bulk, None, Some(&external_potential))?;
             profiles.push(p.solve(solver).or_else(|_| p2.solve(solver)));
         }
 
@@ -299,7 +316,7 @@ where
         pore: &S,
         molefracs: Option<&Array1<f64>>,
         solver: Option<&DFTSolver>,
-        options: VLEOptions,
+        options: SolverOptions,
     ) -> EosResult<Adsorption<U, D, F>> {
         let moles =
             functional.validate_moles(molefracs.map(|x| x * U::reference_moles()).as_ref())?;
@@ -318,8 +335,8 @@ where
             .liquid()
             .build()?;
 
-        let mut vapor = pore.initialize(&vapor_bulk, None)?.solve(None)?;
-        let mut liquid = pore.initialize(&liquid_bulk, None)?.solve(solver)?;
+        let mut vapor = pore.initialize(&vapor_bulk, None, None)?.solve(None)?;
+        let mut liquid = pore.initialize(&liquid_bulk, None, None)?.solve(solver)?;
 
         // calculate initial value for the molar gibbs energy
         let nv = vapor.profile.bulk.density
@@ -395,11 +412,11 @@ where
         QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
-                    && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
+                    && !p.profile.bulk.is_stable(SolverOptions::default()).unwrap()
                 {
                     p.profile
                         .bulk
-                        .tp_flash(None, VLEOptions::default(), None)
+                        .tp_flash(None, SolverOptions::default(), None)
                         .unwrap()
                         .vapor()
                         .pressure(Contributions::Total)
@@ -415,11 +432,11 @@ where
         QuantityArray1::from_shape_fn(self.profiles.len(), |i| match &self.profiles[i] {
             Ok(p) => {
                 if p.profile.bulk.eos.components() > 1
-                    && !p.profile.bulk.is_stable(VLEOptions::default()).unwrap()
+                    && !p.profile.bulk.is_stable(SolverOptions::default()).unwrap()
                 {
                     p.profile
                         .bulk
-                        .tp_flash(None, VLEOptions::default(), None)
+                        .tp_flash(None, SolverOptions::default(), None)
                         .unwrap()
                         .vapor()
                         .molar_gibbs_energy(Contributions::Total)

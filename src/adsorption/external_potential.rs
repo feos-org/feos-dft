@@ -1,5 +1,6 @@
 use crate::adsorption::fea_potential::calculate_fea_potential;
-use crate::geometry::AxisGeometry;
+use crate::functional::HelmholtzEnergyFunctional;
+use crate::geometry::Geometry;
 use feos_core::EosUnit;
 use libc::c_double;
 use ndarray::{Array1, Array2, Axis as Axis_nd};
@@ -48,6 +49,7 @@ pub enum ExternalPotential<U> {
         pore_center: [f64; 3],
         system_size: [QuantityScalar<U>; 3],
         n_grid: [usize; 2],
+        cutoff_radius: Option<f64>,
     },
 
     /// Custom potential
@@ -55,10 +57,9 @@ pub enum ExternalPotential<U> {
 }
 
 /// Parameters of the fluid required to evaluate the external potential.
-pub trait FluidParameters {
+pub trait FluidParameters: HelmholtzEnergyFunctional {
     fn epsilon_k_ff(&self) -> Array1<f64>;
     fn sigma_ff(&self) -> &Array1<f64>;
-    fn m(&self) -> Array1<f64>;
 }
 
 impl<U: EosUnit> ExternalPotential<U> {
@@ -168,6 +169,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -184,7 +186,8 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Cartesian,
+                        Geometry::Cartesian,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -314,6 +317,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -330,7 +334,8 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Polar,
+                        Geometry::Cylindrical,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),
@@ -475,6 +480,7 @@ impl<U: EosUnit> ExternalPotential<U> {
                     pore_center,
                     system_size,
                     n_grid,
+                    cutoff_radius,
                 } => {
                     // combining rules
                     let epsilon_k_sf =
@@ -491,7 +497,8 @@ impl<U: EosUnit> ExternalPotential<U> {
                         system_size,
                         n_grid,
                         temperature,
-                        AxisGeometry::Spherical,
+                        Geometry::Spherical,
+                        *cutoff_radius,
                     )
                 }
                 Self::Custom(_) => unreachable!(),

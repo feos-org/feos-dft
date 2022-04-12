@@ -12,50 +12,40 @@ use petgraph::graph::{Graph, UnGraph};
 use petgraph::visit::EdgeRef;
 use petgraph::Directed;
 use quantity::{QuantityArray, QuantityArray1, QuantityScalar};
+use std::borrow::Cow;
 use std::fmt;
-use std::ops::{AddAssign, MulAssign};
+use std::ops::{AddAssign, Deref, MulAssign};
 use std::rc::Rc;
 
 /// Wrapper struct for the [HelmholtzEnergyFunctional] trait.
+///
+/// Needed (for now) to generically implement the `EquationOfState`
+/// trait for Helmholtz energy functionals.
 #[derive(Clone)]
-pub struct DFT<T> {
-    /// Helmholtz energy functional
-    pub functional: T,
-    /// map segment -> component
-    pub component_index: Array1<usize>,
-    /// chain lengths of individual components
-    pub m: Array1<f64>,
-    /// ideal chain contribution
-    pub ideal_chain_contribution: IdealChainContribution,
+pub struct DFT<F>(F);
+
+impl<F> From<F> for DFT<F> {
+    fn from(functional: F) -> Self {
+        Self(functional)
+    }
 }
 
-impl<T> DFT<T> {
-    /// Create a new DFT struct for a homosegmented Helmholtz energy functional.
-    pub fn new_homosegmented(functional: T, m: &Array1<f64>) -> Self {
-        let component_index = Array1::from_shape_fn(m.len(), |i| i);
-        Self::new(functional, &component_index, m)
+impl<F> DFT<F> {
+    pub fn into<F2: From<F>>(self) -> DFT<F2> {
+        DFT(self.0.into())
     }
+}
 
-    /// Create a new DFT struct for a heterosegmented Helmholtz energy functional.
-    pub fn new_heterosegmented(functional: T, component_index: &Array1<usize>) -> Self {
-        let m = Array1::ones(component_index.len());
-        Self::new(functional, component_index, &m)
-    }
-
-    /// Create a new DFT struct for a general Helmholtz energy functional.
-    pub fn new(functional: T, component_index: &Array1<usize>, m: &Array1<f64>) -> Self {
-        Self {
-            functional,
-            component_index: component_index.clone(),
-            m: m.clone(),
-            ideal_chain_contribution: IdealChainContribution::new(component_index, m),
-        }
+impl<F> Deref for DFT<F> {
+    type Target = F;
+    fn deref(&self) -> &F {
+        &self.0
     }
 }
 
 impl<T: MolarWeight<U>, U: EosUnit> MolarWeight<U> for DFT<T> {
     fn molar_weight(&self) -> QuantityArray1<U> {
-        self.functional.molar_weight()
+        (self as &T).molar_weight()
     }
 }
 
@@ -74,15 +64,15 @@ impl fmt::Display for DefaultIdealGasContribution {
 
 impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
     fn components(&self) -> usize {
-        self.component_index[self.component_index.len() - 1] + 1
+        self.component_index()[self.component_index().len() - 1] + 1
     }
 
     fn subset(&self, component_list: &[usize]) -> Self {
-        self.functional.subset(component_list)
+        (self as &T).subset(component_list)
     }
 
     fn compute_max_density(&self, moles: &Array1<f64>) -> f64 {
-        self.functional.compute_max_density(moles)
+        (self as &T).compute_max_density(moles)
     }
 
     fn residual(&self) -> &[Box<dyn HelmholtzEnergy>] {
@@ -93,12 +83,11 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
     where
         dyn HelmholtzEnergy: HelmholtzEnergyDual<D>,
     {
-        self.functional
-            .contributions()
+        self.contributions()
             .iter()
             .map(|c| (c as &dyn HelmholtzEnergy).helmholtz_energy(state))
             .sum::<D>()
-            + self.ideal_chain_contribution.helmholtz_energy(state)
+            + self.ideal_chain_contribution().helmholtz_energy(state)
     }
 
     fn evaluate_residual_contributions<D: DualNum<f64>>(
@@ -109,7 +98,6 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
         dyn HelmholtzEnergy: HelmholtzEnergyDual<D>,
     {
         let mut res: Vec<(String, D)> = self
-            .functional
             .contributions()
             .iter()
             .map(|c| {
@@ -120,15 +108,25 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
             })
             .collect();
         res.push((
-            self.ideal_chain_contribution.to_string(),
-            self.ideal_chain_contribution.helmholtz_energy(state),
+            self.ideal_chain_contribution().to_string(),
+            self.ideal_chain_contribution().helmholtz_energy(state),
         ));
         res
     }
 
     fn ideal_gas(&self) -> &dyn IdealGasContribution {
-        self.functional.ideal_gas()
+        (self as &T).ideal_gas()
     }
+}
+
+/// Different representations for molecules within DFT.
+pub enum MoleculeShape<'a> {
+    /// For spherical molecules, the number of components.
+    Spherical(usize),
+    /// For non-spherical molecules in a homosegmented approach, the chain length parameter $m$.
+    NonSpherical(&'a Array1<f64>),
+    /// For non-spherical molecules in a heterosegmented approach, the component index for every segment.
+    Heterosegmented(&'a Array1<usize>),
 }
 
 /// A general Helmholtz energy functional.
@@ -136,7 +134,10 @@ pub trait HelmholtzEnergyFunctional: Sized {
     /// Return a slice of [FunctionalContribution]s.
     fn contributions(&self) -> &[Box<dyn FunctionalContribution>];
 
-    /// Return a [DFT] for the specified subset of components.
+    /// Return the shape of the molecules and the necessary specifications.
+    fn molecule_shape(&self) -> MoleculeShape;
+
+    /// Return a functional for the specified subset of components.
     fn subset(&self, component_list: &[usize]) -> DFT<Self>;
 
     /// Return the maximum density in Angstrom^-3.
@@ -170,6 +171,28 @@ pub trait HelmholtzEnergyFunctional: Sized {
             .map(|c| c.weight_functions(temperature))
             .collect()
     }
+
+    fn m(&self) -> Cow<Array1<f64>> {
+        match self.molecule_shape() {
+            MoleculeShape::Spherical(n) => Cow::Owned(Array1::ones(n)),
+            MoleculeShape::NonSpherical(m) => Cow::Borrowed(m),
+            MoleculeShape::Heterosegmented(component_index) => {
+                Cow::Owned(Array1::ones(component_index.len()))
+            }
+        }
+    }
+
+    fn component_index(&self) -> Cow<Array1<usize>> {
+        match self.molecule_shape() {
+            MoleculeShape::Spherical(n) => Cow::Owned(Array1::from_shape_fn(n, |i| i)),
+            MoleculeShape::NonSpherical(m) => Cow::Owned(Array1::from_shape_fn(m.len(), |i| i)),
+            MoleculeShape::Heterosegmented(component_index) => Cow::Borrowed(component_index),
+        }
+    }
+
+    fn ideal_chain_contribution(&self) -> IdealChainContribution {
+        IdealChainContribution::new(&self.component_index(), &self.m())
+    }
 }
 
 impl<T: HelmholtzEnergyFunctional> DFT<T> {
@@ -186,16 +209,20 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         // Calculate residual Helmholtz energy density and functional derivative
-        let t = temperature.to_reduced(U::reference_temperature()).unwrap();
-        let rho = density.to_reduced(U::reference_density()).unwrap();
+        let t = temperature.to_reduced(U::reference_temperature())?;
+        let rho = density.to_reduced(U::reference_density())?;
         let (mut f, dfdrho) = self.functional_derivative(t, &rho, convolver)?;
 
-        // calculate the grand potential density
-        for ((rho, dfdrho), &m) in rho.outer_iter().zip(dfdrho.outer_iter()).zip(self.m.iter()) {
+        // Calculate the grand potential density
+        for ((rho, dfdrho), &m) in rho
+            .outer_iter()
+            .zip(dfdrho.outer_iter())
+            .zip(self.m().iter())
+        {
             f -= &((&dfdrho + m) * &rho);
         }
 
-        let bond_lengths = self.functional.bond_lengths(t);
+        let bond_lengths = self.bond_lengths(t);
         for segment in bond_lengths.node_indices() {
             let n = bond_lengths.neighbors(segment).count();
             f += &(&rho.index_axis(Axis(0), segment.index()) * (0.5 * n as f64));
@@ -214,7 +241,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         let n = self.components();
-        let ig = self.functional.ideal_gas();
+        let ig = self.ideal_gas();
         let lambda = ig.de_broglie_wavelength(temperature, n);
         let mut phi = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
         for (i, rhoi) in density.outer_iter().enumerate() {
@@ -233,7 +260,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         let n = self.components();
-        let ig = self.functional.ideal_gas();
+        let ig = self.ideal_gas();
         let lambda = ig.de_broglie_wavelength(temperature, n);
         let mut phi = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
         for (i, rhoi) in density.outer_iter().enumerate() {
@@ -256,9 +283,9 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
     {
         let density_dual = density.mapv(N::from);
         let weighted_densities = convolver.weighted_densities(&density_dual);
-        let functional_contributions = self.functional.contributions();
+        let functional_contributions = self.contributions();
         let mut helmholtz_energy_density: Array<N, D> = self
-            .ideal_chain_contribution
+            .ideal_chain_contribution()
             .calculate_helmholtz_energy_density(&density.mapv(N::from))?;
         for (c, wd) in functional_contributions.iter().zip(weighted_densities) {
             let nwd = wd.shape()[0];
@@ -296,8 +323,8 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
             Contributions::Total => {
                 helmholtz_energy_density += &self.ideal_gas_contribution_dual::<D>(temperature_dual, density);
             },
-            Contributions::ResidualP|Contributions::IdealGas => panic!("Entropy density can only be calculated for Contributions::Residual or Contributions::Total"),
-            Contributions::Residual => (),
+            Contributions::ResidualNpt|Contributions::IdealGas => panic!("Entropy density can only be calculated for Contributions::Residual or Contributions::Total"),
+            Contributions::ResidualNvt => (),
         }
         Ok(helmholtz_energy_density.mapv(|f| -f.eps[0]))
     }
@@ -319,11 +346,11 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         let density_dual = density.mapv(Dual64::from);
         let temperature_dual = Dual64::from(temperature).derive();
         let weighted_densities = convolver.weighted_densities(&density_dual);
-        let functional_contributions = self.functional.contributions();
+        let functional_contributions = self.contributions();
         let mut helmholtz_energy_density: Vec<Array<Dual64, D>> =
             Vec::with_capacity(functional_contributions.len() + 1);
         helmholtz_energy_density.push(
-            self.ideal_chain_contribution
+            self.ideal_chain_contribution()
                 .calculate_helmholtz_energy_density(&density.mapv(Dual64::from))?,
         );
 
@@ -367,8 +394,8 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
                 Contributions::Total => {
                     helmholtz_energy_density_dual += &self.ideal_gas_contribution_dual::<D>(temperature_dual, density);
                 },
-                Contributions::ResidualP|Contributions::IdealGas => panic!("Internal energy density can only be calculated for Contributions::Residual or Contributions::Total"),
-                Contributions::Residual => (),
+                Contributions::ResidualNpt|Contributions::IdealGas => panic!("Internal energy density can only be calculated for Contributions::Residual or Contributions::Total"),
+                Contributions::ResidualNvt => (),
             }
         let helmholtz_energy_density = helmholtz_energy_density_dual
             .mapv(|f| f.re - f.eps[0] * temperature)
@@ -389,7 +416,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         let weighted_densities = convolver.weighted_densities(density);
-        let contributions = self.functional.contributions();
+        let contributions = self.contributions();
         let mut partial_derivatives = Vec::with_capacity(contributions.len());
         let mut helmholtz_energy_density = Array::zeros(density.raw_dim().remove_axis(Axis(0)));
         for (c, wd) in contributions.iter().zip(weighted_densities) {
@@ -424,7 +451,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         D::Larger: Dimension<Smaller = D>,
     {
         // calculate weight functions
-        let bond_lengths = self.functional.bond_lengths(temperature).into_edge_type();
+        let bond_lengths = self.bond_lengths(temperature).into_edge_type();
         let mut bond_weight_functions = bond_lengths.map(
             |_, _| (),
             |_, &l| WeightFunction::new_scaled(arr1(&[l]), WeightFunctionShape::Delta),
