@@ -178,13 +178,6 @@ macro_rules! impl_profile {
                     self.0.profile.grand_potential_density()?,
                 ))
             }
-
-            #[getter]
-            fn get_grand_potential(&self) -> PyResult<PySINumber> {
-                Ok(PySINumber::from(
-                    self.0.profile.grand_potential()?,
-                ))
-            }
         }
     };
 }
