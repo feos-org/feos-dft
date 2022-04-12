@@ -213,7 +213,7 @@ impl<T: HelmholtzEnergyFunctional> DFT<T> {
         let rho = density.to_reduced(U::reference_density())?;
         let (mut f, dfdrho) = self.functional_derivative(t, &rho, convolver)?;
 
-        // calculate the grand potential density
+        // Calculate the grand potential density
         for ((rho, dfdrho), &m) in rho
             .outer_iter()
             .zip(dfdrho.outer_iter())

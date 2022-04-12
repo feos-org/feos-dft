@@ -40,11 +40,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> PlanarInterface<U, F> {
 
         // postprocess
         self.surface_tension = Some(self.profile.integrate(
-            &(self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )? + self.vle.vapor().pressure(Contributions::Total)),
+            &(self.profile.grand_potential_density()?
+                + self.vle.vapor().pressure(Contributions::Total)),
         ));
         let delta_rho = self.vle.liquid().density - self.vle.vapor().density;
         self.equimolar_radius = Some(

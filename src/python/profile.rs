@@ -171,6 +171,20 @@ macro_rules! impl_profile {
                     self.0.profile.internal_energy(contributions)?,
                 ))
             }
+
+            #[getter]
+            fn grand_potential_density(&self) -> PyResult<$si_arr> {
+                Ok($si_arr::from(
+                    self.0.profile.grand_potential_density()?,
+                ))
+            }
+
+            #[getter]
+            fn grand_potential(&self) -> PyResult<PySINumber> {
+                Ok(PySINumber::from(
+                    self.0.profile.grand_potential()?,
+                ))
+            }
         }
     };
 }
