@@ -76,11 +76,8 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional + PairPotential> PairCorrelation<U
 
         // calculate self solvation free energy
         self.self_solvation_free_energy = Some(self.profile.integrate(
-            &(self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )? + self.profile.bulk.pressure(Contributions::Total)),
+            &(self.profile.grand_potential_density()?
+                + self.profile.bulk.pressure(Contributions::Total)),
         ));
 
         // calculate structure factor

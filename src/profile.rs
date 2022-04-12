@@ -564,6 +564,15 @@ where
         Ok(self.integrate(&self.entropy_density(contributions)?))
     }
 
+    pub fn grand_potential_density(&self) -> EosResult<QuantityArray<U, D>> {
+        self.dft
+            .grand_potential_density(self.temperature, &self.density, &self.convolver)
+    }
+
+    pub fn grand_potential(&self) -> EosResult<QuantityScalar<U>> {
+        Ok(self.integrate(&self.grand_potential_density()?))
+    }
+
     pub fn internal_energy(&self, contributions: Contributions) -> EosResult<QuantityScalar<U>> {
         // initialize convolver
         let t = self.temperature.to_reduced(U::reference_temperature())?;

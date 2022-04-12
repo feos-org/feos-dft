@@ -36,13 +36,7 @@ impl<U: EosUnit, F: HelmholtzEnergyFunctional> SolvationProfile<U, F> {
         self.profile.solve(solver, debug)?;
 
         // calculate grand potential density
-        let omega = self
-            .profile
-            .integrate(&self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )?);
+        let omega = self.profile.grand_potential()?;
         self.grand_potential = Some(omega);
 
         // calculate solvation free energy

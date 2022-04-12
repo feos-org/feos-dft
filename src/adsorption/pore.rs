@@ -8,7 +8,7 @@ use crate::solver::DFTSolver;
 use feos_core::{Contributions, EosResult, EosUnit, State, StateBuilder};
 use ndarray::prelude::*;
 use ndarray::Axis as Axis_nd;
-use ndarray::Zip;
+use ndarray::{RemoveAxis, Zip};
 use ndarray_stats::QuantileExt;
 use quantity::{QuantityArray, QuantityArray2, QuantityArray4, QuantityScalar};
 use std::rc::Rc;
@@ -133,22 +133,19 @@ impl<U: Copy, D: Dimension, F> Clone for PoreProfile<U, D, F> {
     }
 }
 
-impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional> PoreProfile<U, D, F>
+impl<U: EosUnit, D: Dimension + RemoveAxis + 'static, F: HelmholtzEnergyFunctional>
+    PoreProfile<U, D, F>
 where
     D::Larger: Dimension<Smaller = D>,
+    D::Smaller: Dimension<Larger = D>,
+    <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
 {
     pub fn solve_inplace(&mut self, solver: Option<&DFTSolver>, debug: bool) -> EosResult<()> {
         // Solve the profile
         self.profile.solve(solver, debug)?;
 
         // calculate grand potential density
-        let omega = self
-            .profile
-            .integrate(&self.profile.dft.grand_potential_density(
-                self.profile.temperature,
-                &self.profile.density,
-                &self.profile.convolver,
-            )?);
+        let omega = self.profile.grand_potential()?;
         self.grand_potential = Some(omega);
 
         // calculate interfacial tension

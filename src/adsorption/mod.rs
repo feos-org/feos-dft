@@ -4,7 +4,7 @@ use super::solver::DFTSolver;
 use feos_core::{
     Contributions, EosError, EosResult, EosUnit, EquationOfState, SolverOptions, StateBuilder,
 };
-use ndarray::{arr1, Array1, Dimension, Ix1, Ix3};
+use ndarray::{arr1, Array1, Dimension, Ix1, Ix3, RemoveAxis};
 use quantity::{QuantityArray1, QuantityArray2, QuantityScalar};
 use std::rc::Rc;
 
@@ -55,12 +55,17 @@ where
         })
     }
 
-    fn equilibrium<D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters>(
+    fn equilibrium<
+        D: Dimension + RemoveAxis + 'static,
+        F: HelmholtzEnergyFunctional + FluidParameters,
+    >(
         &self,
         equilibrium: &Adsorption<U, D, F>,
     ) -> EosResult<(QuantityArray1<U>, QuantityArray1<U>)>
     where
         D::Larger: Dimension<Smaller = D>,
+        D::Smaller: Dimension<Larger = D>,
+        <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
     {
         let p_eq = equilibrium.pressure().get(0);
         match self {
@@ -111,10 +116,16 @@ pub type Adsorption1D<U, F> = Adsorption<U, Ix1, F>;
 /// Container structure for adsorption isotherms in 3D pores.
 pub type Adsorption3D<U, F> = Adsorption<U, Ix3, F>;
 
-impl<U: EosUnit, D: Dimension, F: HelmholtzEnergyFunctional + FluidParameters> Adsorption<U, D, F>
+impl<
+        U: EosUnit,
+        D: Dimension + RemoveAxis + 'static,
+        F: HelmholtzEnergyFunctional + FluidParameters,
+    > Adsorption<U, D, F>
 where
     QuantityScalar<U>: std::fmt::Display,
     D::Larger: Dimension<Smaller = D>,
+    D::Smaller: Dimension<Larger = D>,
+    <D::Larger as Dimension>::Larger: Dimension<Smaller = D::Larger>,
 {
     fn new<S: PoreSpecification<U, D>>(
         functional: &Rc<DFT<F>>,
