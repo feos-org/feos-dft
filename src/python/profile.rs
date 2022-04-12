@@ -173,14 +173,14 @@ macro_rules! impl_profile {
             }
 
             #[getter]
-            fn grand_potential_density(&self) -> PyResult<$si_arr> {
+            fn get_grand_potential_density(&self) -> PyResult<$si_arr> {
                 Ok($si_arr::from(
                     self.0.profile.grand_potential_density()?,
                 ))
             }
 
             #[getter]
-            fn grand_potential(&self) -> PyResult<PySINumber> {
+            fn get_grand_potential(&self) -> PyResult<PySINumber> {
                 Ok(PySINumber::from(
                     self.0.profile.grand_potential()?,
                 ))
