@@ -311,7 +311,7 @@ impl fmt::Display for SolverParameter {
 impl fmt::Display for DFTSolver {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for algorithm in &self.parameters {
-            write!(f, "{}\n", algorithm)?;
+            writeln!(f, "{algorithm}")?;
         }
         Ok(())
     }
