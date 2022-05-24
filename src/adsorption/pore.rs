@@ -18,12 +18,11 @@ const DEFAULT_GRID_POINTS: usize = 2048;
 
 /// Parameters required to specify a 1D pore.
 pub struct Pore1D<U> {
-    // functional: Rc<DFT<F>>,
-    geometry: Geometry,
-    pore_size: QuantityScalar<U>,
-    potential: ExternalPotential<U>,
-    n_grid: Option<usize>,
-    potential_cutoff: Option<f64>,
+    pub geometry: Geometry,
+    pub pore_size: QuantityScalar<U>,
+    pub potential: ExternalPotential<U>,
+    pub n_grid: Option<usize>,
+    pub potential_cutoff: Option<f64>,
 }
 
 impl<U: EosUnit> Pore1D<U> {
