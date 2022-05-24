@@ -52,6 +52,7 @@ impl_pair_correlation!(FMTFunctional);
 #[pymodule]
 pub fn feos_dft(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Verbosity>()?;
+    m.add_class::<Contributions>()?;
 
     m.add_class::<PyExternalPotential>()?;
     m.add_class::<Geometry>()?;
