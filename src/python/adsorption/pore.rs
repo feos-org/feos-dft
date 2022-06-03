@@ -79,6 +79,31 @@ macro_rules! impl_pore {
                 )?))
             }
 
+            #[getter]
+            fn get_geometry(&self)-> Geometry {
+                self.0.geometry
+            }
+
+            #[getter]
+            fn get_pore_size(&self)-> PySINumber {
+                self.0.pore_size.into()
+            }
+
+            #[getter]
+            fn get_potential(&self)-> PyExternalPotential {
+                PyExternalPotential(self.0.potential.clone())
+            }
+
+            #[getter]
+            fn get_n_grid(&self)-> Option<usize> {
+                self.0.n_grid
+            }
+
+            #[getter]
+            fn get_potential_cutoff(&self)-> Option<f64> {
+                self.0.potential_cutoff
+            }
+
             /// The pore volume using Helium at 298 K as reference.
             #[getter]
             fn get_pore_volume(&self) -> PyResult<PySINumber> {
