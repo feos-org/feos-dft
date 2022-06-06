@@ -2,7 +2,7 @@
 name = "feos-dft"
 version = "0.2.0"
 authors = ["Philipp Rehner <prehner@ethz.ch>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Generic classical DFT implementations for the `feos` project."
 homepage = "https://github.com/feos-org"

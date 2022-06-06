@@ -19,6 +19,11 @@ pub trait FMTProperties {
     fn component_index(&self) -> Array1<usize>;
     fn chain_length(&self) -> Array1<f64>;
     fn hs_diameter<N: DualNum<f64>>(&self, temperature: N) -> Array1<N>;
+
+    fn geometry_coefficients<N: DualNum<f64>>(&self, _temperature: N) -> [Array1<N>; 4] {
+        let m = self.chain_length().mapv(|m| N::from(m));
+        [m.clone(), m.clone(), m.clone(), m]
+    }
 }
 
 /// Different versions of fundamental measure theory
@@ -60,8 +65,8 @@ impl<P> FMTContribution<P> {
 impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTContribution<P> {
     fn weight_functions(&self, temperature: N) -> WeightFunctionInfo<N> {
         let r = self.properties.hs_diameter(temperature) * 0.5;
-        let m = self.properties.chain_length();
-        match (self.version, m.len()) {
+        let [c0, c1, c2, c3] = self.properties.geometry_coefficients(temperature);
+        match (self.version, r.len()) {
             (FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear, 1) => {
                 WeightFunctionInfo::new(self.properties.component_index(), false).extend(
                     vec![
@@ -70,8 +75,9 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                         WeightFunctionShape::DeltaVec,
                     ]
                     .into_iter()
-                    .map(|s| WeightFunction {
-                        prefactor: self.properties.chain_length().mapv(|m| m.into()),
+                    .zip([c2, c3.clone(), c3])
+                    .map(|(s, c)| WeightFunction {
+                        prefactor: c,
                         kernel_radius: r.clone(),
                         shape: s,
                     })
@@ -83,9 +89,9 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                 WeightFunctionInfo::new(self.properties.component_index(), false)
                     .add(
                         WeightFunction {
-                            prefactor: Zip::from(&m)
+                            prefactor: Zip::from(&c0)
                                 .and(&r)
-                                .map_collect(|&m, &r| r.powi(-2) * m / (4.0 * PI)),
+                                .map_collect(|&c, &r| r.powi(-2) * c / (4.0 * PI)),
                             kernel_radius: r.clone(),
                             shape: WeightFunctionShape::Delta,
                         },
@@ -93,9 +99,9 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     )
                     .add(
                         WeightFunction {
-                            prefactor: Zip::from(&m)
+                            prefactor: Zip::from(&c1)
                                 .and(&r)
-                                .map_collect(|&m, &r| r.recip() * m / (4.0 * PI)),
+                                .map_collect(|&c, &r| r.recip() * c / (4.0 * PI)),
                             kernel_radius: r.clone(),
                             shape: WeightFunctionShape::Delta,
                         },
@@ -103,7 +109,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     )
                     .add(
                         WeightFunction {
-                            prefactor: m.mapv(|m| m.into()),
+                            prefactor: c2,
                             kernel_radius: r.clone(),
                             shape: WeightFunctionShape::Delta,
                         },
@@ -111,7 +117,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     )
                     .add(
                         WeightFunction {
-                            prefactor: m.mapv(|m| m.into()),
+                            prefactor: c3.clone(),
                             kernel_radius: r.clone(),
                             shape: WeightFunctionShape::Theta,
                         },
@@ -119,9 +125,9 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     )
                     .add(
                         WeightFunction {
-                            prefactor: Zip::from(&m)
+                            prefactor: Zip::from(&c3)
                                 .and(&r)
-                                .map_collect(|&m, &r| r.recip() * m / (4.0 * PI)),
+                                .map_collect(|&c, &r| r.recip() * c / (4.0 * PI)),
                             kernel_radius: r.clone(),
                             shape: WeightFunctionShape::DeltaVec,
                         },
@@ -129,8 +135,8 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                     )
                     .add(
                         WeightFunction {
-                            prefactor: m.mapv(|m| m.into()),
-                            kernel_radius: r.clone(),
+                            prefactor: c3,
+                            kernel_radius: r,
                             shape: WeightFunctionShape::DeltaVec,
                         },
                         true,
@@ -145,8 +151,9 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
                         WeightFunctionShape::Theta,
                     ]
                     .into_iter()
-                    .map(|s| WeightFunction {
-                        prefactor: self.properties.chain_length().mapv(|m| m.into()),
+                    .zip(self.properties.geometry_coefficients(temperature))
+                    .map(|(s, c)| WeightFunction {
+                        prefactor: c,
                         kernel_radius: r.clone(),
                         shape: s,
                     })
@@ -165,7 +172,7 @@ impl<P: FMTProperties, N: DualNum<f64>> FunctionalContributionDual<N> for FMTCon
         let pure_component_weighted_densities = matches!(
             self.version,
             FMTVersion::WhiteBear | FMTVersion::AntiSymWhiteBear
-        ) && self.properties.chain_length().len() == 1;
+        ) && self.properties.component_index().len() == 1;
 
         // scalar weighted densities
         let (n2, n3) = if pure_component_weighted_densities {
