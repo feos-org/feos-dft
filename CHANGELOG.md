@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added getters for the fields of `Pore1D` in Python. [#30](https://github.com/feos-org/feos-dft/pull/30)
 
+### Changed
+- Made FMT functional more flexible w.r.t. the shape of the weight functions. [#31](https://github.com/feos-org/feos-dft/pull/31)
+
 ## [0.2.0] - 2022-04-12
 ### Added
 - Added `grand_potential_density` getter for DFT profiles in Python. [#22](https://github.com/feos-org/feos-dft/pull/22)
