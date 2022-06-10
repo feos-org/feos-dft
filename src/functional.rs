@@ -123,9 +123,11 @@ impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
 pub enum MoleculeShape<'a> {
     /// For spherical molecules, the number of components.
     Spherical(usize),
-    /// For non-spherical molecules in a homosegmented approach, the chain length parameter $m$.
+    /// For non-spherical molecules in a homosegmented approach, the
+    /// chain length parameter $m$.
     NonSpherical(&'a Array1<f64>),
-    /// For non-spherical molecules in a heterosegmented approach, the component index for every segment.
+    /// For non-spherical molecules in a heterosegmented approach,
+    /// the component index for every segment.
     Heterosegmented(&'a Array1<usize>),
 }
 

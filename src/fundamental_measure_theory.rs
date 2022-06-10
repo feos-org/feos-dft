@@ -14,15 +14,35 @@ use std::rc::Rc;
 const PI36M1: f64 = 1.0 / (36.0 * PI);
 const N3_CUTOFF: f64 = 1e-5;
 
+/// Different monomer shapes for FMT.
+pub enum MonomerShape<'a, N> {
+    /// For spherical monomers, the number of components.
+    Spherical(usize),
+    /// For non-spherical molecules in a homosegmented approach, the
+    /// chain length parameter $m$.
+    NonSpherical(&'a Array1<N>),
+    /// For non-spherical molecules in a heterosegmented approach,
+    /// the geometry factors for every segment.
+    Heterosegmented([Array1<N>; 4]),
+}
+
 /// Properties of (generalized) hard sphere systems.
 pub trait FMTProperties {
     fn component_index(&self) -> Array1<usize>;
-    fn chain_length(&self) -> Array1<f64>;
+    fn monomer_shape<N: DualNum<f64>>(&self, temperature: N) -> MonomerShape<N>;
     fn hs_diameter<N: DualNum<f64>>(&self, temperature: N) -> Array1<N>;
 
-    fn geometry_coefficients<N: DualNum<f64>>(&self, _temperature: N) -> [Array1<N>; 4] {
-        let m = self.chain_length().mapv(|m| N::from(m));
-        [m.clone(), m.clone(), m.clone(), m]
+    fn geometry_coefficients<N: DualNum<f64>>(&self, temperature: N) -> [Array1<N>; 4] {
+        match self.monomer_shape(temperature) {
+            MonomerShape::Spherical(n) => {
+                let m = Array1::ones(n);
+                [m.clone(), m.clone(), m.clone(), m]
+            }
+            MonomerShape::NonSpherical(m) => {
+                [m.to_owned(), m.to_owned(), m.to_owned(), m.to_owned()]
+            }
+            MonomerShape::Heterosegmented(g) => g,
+        }
     }
 }
 
@@ -277,8 +297,8 @@ impl FMTProperties for HardSphereProperties {
         Array1::from_shape_fn(self.sigma.len(), |i| i)
     }
 
-    fn chain_length(&self) -> Array1<f64> {
-        Array::ones(self.sigma.len())
+    fn monomer_shape<N>(&self, _: N) -> MonomerShape<N> {
+        MonomerShape::Spherical(self.sigma.len())
     }
 
     fn hs_diameter<N: DualNum<f64>>(&self, _: N) -> Array1<N> {
