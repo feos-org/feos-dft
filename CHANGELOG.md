@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Made FMT functional more flexible w.r.t. the shape of the weight functions. [#31](https://github.com/feos-org/feos-dft/pull/31)
+- Changed interface of `PairCorrelationFunction` to facilitate the calculation of pair correlation functions in mixtures. [#29](https://github.com/feos-org/feos-dft/pull/29)
 
 ## [0.2.0] - 2022-04-12
 ### Added

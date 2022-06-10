@@ -81,6 +81,8 @@ macro_rules! impl_pair_correlation {
         /// ----------
         /// bulk : State
         ///     The bulk state in equilibrium with the profile.
+        /// test_particle : int
+        ///     The index of the test particle.
         /// n_grid : int
         ///     The number of grid points.
         /// width: SINumber
@@ -91,7 +93,7 @@ macro_rules! impl_pair_correlation {
         /// PairCorrelation
         ///
         #[pyclass(name = "PairCorrelation", unsendable)]
-        #[pyo3(text_signature = "(bulk, n_grid, width)")]
+        #[pyo3(text_signature = "(bulk, test_particle, n_grid, width)")]
         pub struct PyPairCorrelation(PairCorrelation<SIUnit, $func>);
 
         impl_1d_profile!(PyPairCorrelation, [get_r]);
@@ -99,8 +101,13 @@ macro_rules! impl_pair_correlation {
         #[pymethods]
         impl PyPairCorrelation {
             #[new]
-            fn new(bulk: PyState, n_grid: usize, width: PySINumber) -> PyResult<Self> {
-                let profile = PairCorrelation::new(&bulk.0, n_grid, width.into())?;
+            fn new(
+                bulk: PyState,
+                test_particle: usize,
+                n_grid: usize,
+                width: PySINumber,
+            ) -> PyResult<Self> {
+                let profile = PairCorrelation::new(&bulk.0, test_particle, n_grid, width.into())?;
                 Ok(PyPairCorrelation(profile))
             }
 

@@ -352,9 +352,10 @@ impl HelmholtzEnergyFunctional for FMTFunctional {
 }
 
 impl PairPotential for FMTFunctional {
-    fn pair_potential(&self, r: &Array1<f64>) -> Array2<f64> {
-        Array::from_shape_fn((self.properties.sigma.len(), r.len()), |(i, j)| {
-            if r[j] > self.properties.sigma[i] {
+    fn pair_potential(&self, i: usize, r: &Array1<f64>, _: f64) -> Array2<f64> {
+        let s = &self.properties.sigma;
+        Array::from_shape_fn((s.len(), r.len()), |(j, k)| {
+            if r[k] > 0.5 * (s[i] + s[j]) {
                 0.0
             } else {
                 f64::INFINITY
